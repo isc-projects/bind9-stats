@@ -1,0 +1,416 @@
+#!/usr/bin/env perl
+
+=head1 NAME
+
+bind_stats_import - Import BIND XML stats into MongoDB
+
+=head1 SYNOPSIS
+
+  bind_stats_import [options] -s server_name --collection collection_name *xml
+  
+  Other Options
+  
+  -s|--server   host name of the server
+  -d|--dry-run  do everything except save the data on db
+  --mongo-host  name or ip address of mongo server (defaults to localhost)
+  --mongo-port  port number where mongo is running  (defaults to 27017)
+  --mongo-db    database name in mongodb
+  -v|--verbose  be more verbose when running
+  
+
+=head1 DESCRIPTION
+
+  This program imports BIND 9 XML files into a mongo DB
+
+=head1 EXPORT
+
+  None by default.
+
+=cut
+
+=head1 DESCRIPTION
+
+=over
+
+=cut
+
+use common::sense;
+use MongoDB;
+use Time::HiRes qw(gettimeofday tv_interval);
+use HTTP::Date;
+
+use Data::Dumper;
+use Getopt::Long;
+
+use ISC::BIND::Stats;
+
+=item $config
+
+This is the main configuration for the program, it provides reasonable defaults,
+with the ability to be modified by using the command line options.
+
+=cut
+
+my $config = {
+               server_name => q{},
+               dry         => 0,
+               verbose     => 1,
+               mongo_host  => 'localhost',
+               mongo_port  => 27017,
+               mongo_db    => q{}
+};
+
+my $options = GetOptions(
+                          'server|s=s'   => \$config->{server_name},
+                          'dry-run|d'    => \$config->{dry},
+                          'mongo-host=s' => \$config->{mongo_host},
+                          'mongo-port=i' => \$config->{mongo_port},
+                          'verbose|v'    => \$config->{verbose},
+                          'mongo-db=s'   => \$config->{mongo_db}
+);
+
+if ( !$config->{server_name} ) {
+  say q{Must supply --server|-s server_name};
+  exit 1;
+}
+
+if ( !$config->{mongo_db} ) {
+  say q{Must supply --mongo_db database_name};
+  exit 1;
+}
+
+my $connection;
+my $database;
+my $collection;
+my $datasets;
+
+$connection = MongoDB::Connection->new( host => $config->{mongo_host},
+                                        port => $config->{mongo_port} );
+
+my $dbname = $config->{mongo_db};
+$database   = $connection->$dbname;
+$collection = $database->traffic;
+$datasets   = $database->datasets;
+
+# Make sure the indexes exists
+
+$collection->ensure_index(
+                           {
+                             '_id.pubservhost' => 1,
+                             '_id.customer'    => 1,
+                             '_id.zone'        => 1,
+                             '_id.sample_time' => 1
+                           },
+                           { unique => 1 }
+);
+
+$collection->ensure_index(
+                           {
+                             '_id.pubservhost' => 1,
+                             '_id.sample_time' => 1,
+                             boot_time         => 1
+                           }
+);
+
+$datasets->ensure_index(
+                         {
+                           '_id.pubservhost' => 1,
+                           '_id.sample_time' => 1
+                         },
+                         { unique => 1 }
+);
+
+#
+# List of items we're interested in
+#
+our @WANTED = (
+                'qrysuccess',  'qryauthans', 'qryreferral', 'qrynxrrset',
+                'qryservfail', 'qryformerr', ' qrynxdomain '
+);
+
+my $first_dataset = { map { $_ => 0 } @WANTED };
+
+my $counter = 0;
+
+my $parser = ISC::BIND::Stats->new;
+
+#
+# Main process cycle
+#
+
+foreach my $file (@ARGV) {
+  $counter++;
+  my @processed = ();
+  &log_msg( 1, q{count: %d file: %s }, $counter, $file );
+  my $parse_t0      = [gettimeofday];
+  my $result        = $parser->parse( { file => $file } );
+  my $parse_elapsed = tv_interval( $parse_t0, [gettimeofday] );
+  my @data          = ();
+
+  my $process_t0  = [gettimeofday];
+  my $boot_time   = str2time( $result->{boot_time} ) * 1000;
+  my $sample_time = str2time( $result->{sample_time} );
+
+  # Adjust the sample_time to a 5 minute interval
+  $sample_time -= ( $sample_time % 300 );
+  $sample_time *= 1000;
+
+  my $delta_seconds = 1;
+
+  # Previous dataset observed
+  my $lookup_t0 = [gettimeofday];
+
+  my $previous_set = &get_previous_set(
+                                        {
+                                          server_name => $config->{server_name},
+                                          sample_time => $sample_time,
+                                          boot_time   => $boot_time
+                                        }
+  );
+
+  if ( ref $previous_set eq 'HASH' ) {
+    $delta_seconds = ( $sample_time - $previous_set->{sample_time} ) / 1000;
+
+  }
+
+  my $lookup_elapsed = tv_interval( $lookup_t0, [gettimeofday] );
+
+  if ( $previous_set->{sample_time} == $sample_time ) {
+    &log_msg( 1, "Skipping already processed file: %s", $file );
+    next;
+  }
+
+  &log_msg( 1, q{delta seconds is: %d}, $delta_seconds );
+
+  while ( my ( $zone, $data ) = each %{ $result->{zone} } ) {
+
+    my $data_element = {
+      _id => {
+               pubservhost => $config->{server_name},
+               zone        => $zone,
+               sample_time => $sample_time
+      },
+      boot_time => $boot_time,
+      serial    => $data->{serial},
+      counters  => {
+        map {
+          $_ => $data->{counters}->{$_}
+            || 0
+          } @WANTED
+      },
+      qps => $first_dataset
+    };
+
+    if ( $previous_set->{data}->{$zone} ) {
+      $data_element->{qps} =
+        &calculate_delta(
+                          {
+                            current       => $data_element->{counters},
+                            previous      => $previous_set->{data}->{$zone},
+                            delta_seconds => $delta_seconds
+                          }
+        );
+    }
+
+    push @processed, $data_element;
+
+  }
+
+  my $process_elapsed = tv_interval( $process_t0, [gettimeofday] );
+
+  my $save_t0 = [gettimeofday];
+  &save_data( \@processed );
+  my $save_elapsed = tv_interval( $save_t0, [gettimeofday] );
+
+  # save a reference to this file in the dataset
+
+  $datasets->insert(
+                     {
+                       _id => {
+                                pubservhost => $config->{server_name},
+                                sample_time => $sample_time
+                       },
+                       boot_time => $boot_time
+                     }
+  ) if !$config->{dry};
+
+  &log_msg(
+    1,
+q{done (parsing: %.2f, processing: %.2f, inserting: %.2f, calc_delta: %.2f, zones: %d)},
+    $parse_elapsed,
+    $process_elapsed,
+    $save_elapsed,
+    $lookup_elapsed,
+    scalar @processed
+  );
+}
+
+=item get_previous_set
+
+Fetches the records stored in the previous dataset, by first looking into the 
+' datasets ' collection in MongoBD, and termining what was the last sample_time
+stored in the ' traffic ' collection.
+
+Once the sample_time is determined, another query is sent to the database with
+to retrieve all of the records.
+
+Since we only need the counters key associated to the specific zone, we iterate
+through the cursor and store a pointer to the counters structure.
+
+If there is no previous dataset, we return an empty structure.
+
+=cut
+
+sub get_previous_set {
+  my $args = shift;
+
+  my $previous = $datasets->query(
+                     {
+                       '_id.pubservhost' => $args->{server_name},
+                       '_id.sample_time' => { q{$lte} => $args->{sample_time} },
+                       boot_time         => $args->{boot_time}
+                     }
+  )->sort( { '_id.sample_time' => -1 } )->limit(1)->next;
+
+  if ( !$previous ) {
+    &log_msg( 2, 'no previous dataset found' );
+    return;
+  }
+
+  my $sample_time = $previous->{_id}->{sample_time};
+
+  my $cursor = $collection->query(
+                                   {
+                                     '_id.pubservhost'  => $args->{server_name},
+                                     '_id.sample_time ' => $sample_time,
+                                     boot_time          => $args->{boot_time}
+                                   },
+                                   { counters => 1 }
+  );
+
+  my $r = {};
+
+  $r->{sample_time} = $sample_time;
+
+  if ( $cursor->has_next ) {
+    &log_msg( 1, q{Found previous dataset, using it for computations...} );
+    while ( $cursor->has_next ) {
+      my $data = $cursor->next;
+      $r->{data}->{ $data->{_id}->{zone} } = $data->{counters};
+    }
+  }
+
+  return $r;
+}
+
+=item calculate_delta
+
+This function simply receives two hashes with key->value pairs and substracts
+them and divide them by delta_seconds.
+
+Basically: qps = new_counter - old_counter 
+                -------------------------
+                      delta_seconds
+
+Returns an empty hash if neither the current or previous are defined, or if
+delta_seconds is not > 0
+
+=cut
+
+sub calculate_delta {
+  my $args          = shift;
+  my $data          = $args->{current};
+  my $previous      = $args->{previous};
+  my $delta_seconds = $args->{delta_seconds};
+  my $r             = {};
+
+  if ( $data && $previous && $delta_seconds > 0 ) {
+    $r =
+      { map { $_ => ( $data->{$_} - $previous->{$_} ) / $delta_seconds }
+        @WANTED };
+  }
+  else {
+    return;
+  }
+
+  return $r;
+}
+
+=item log_msg
+
+This function provides basic loging into the output terminal.
+
+Most likely, we will move this to a centralized common library
+so we can re-use it.
+
+As input, it receives: &log_msg(LEVEL,q{sprintf template},@args);
+
+It returns nothing.
+
+=cut
+
+sub log_msg {
+  my ( $level, $template, @args ) = @_;
+  my @caller     = caller(1);
+  my @subroutine = split( /::/, $caller[3] );
+  my $sub        = @subroutine[-1];
+  $template = sprintf( '[%s] %s', $sub || 'main', $template );
+
+  if ( $level >= $config->{verbose} ) {
+    printf( qq{[bind_stats_import] %s\n}, sprintf( $template, @args ) );
+  }
+  return;
+}
+
+=item save_data
+
+Receives a reference to an array containing the documents to be stored
+in Mongo
+
+=cut
+
+sub save_data {
+  my $data = shift;
+
+  if ( $config->{dry} ) {
+    &log_msg( 2, '%s', Dumper($data) );
+    return;
+  }
+
+  return $collection->batch_insert($data);
+
+}
+
+__END__
+
+=back
+
+=head1 SEE ALSO
+
+  http://www.isc.org
+
+=head1 AUTHOR
+
+Internet Systems Consortium Inc.
+
+=head1 LICENSE
+
+BSD
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2012  Internet Systems Consortium, Inc. ("ISC")
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+=cut

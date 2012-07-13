@@ -1,0 +1,6 @@
+Revision history for Perl extension ISC::BIND::Stats::Parser.
+
+0.01  Fri Jul 13 11:15:32 2012
+	- original version; created by h2xs 1.23 with options
+		--skip-exporter --skip-ppport -X -A -n ISC::BIND::Stats::Parser
+
