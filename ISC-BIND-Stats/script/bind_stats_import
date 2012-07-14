@@ -337,9 +337,9 @@ sub get_previous_set {
 
   my $cursor = $collection->query(
                                    {
-                                     '_id.pubservhost'  => $args->{server_name},
-                                     '_id.sample_time ' => $sample_time,
-                                     boot_time          => $args->{boot_time}
+                                     '_id.pubservhost' => $args->{server_name},
+                                     '_id.sample_time' => $sample_time,
+                                     boot_time         => $args->{boot_time}
                                    },
                                    { counters => 1 }
   );
