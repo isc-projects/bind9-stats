@@ -32,5 +32,7 @@ note('Parsing a bz2 file');
 my $data_bz2 = $parser->parse( { file => 't/XML/sample.xml.bz2' } );
 ok(ref $data_bz2 eq 'HASH','Data returned from parser (bz2)');
 
+diag(Dumper($data_bz2));
+
 
 done_testing();

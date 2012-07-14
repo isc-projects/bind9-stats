@@ -83,14 +83,16 @@ my $connection;
 my $database;
 my $collection;
 my $datasets;
+my $server_stats;
 
 $connection = MongoDB::Connection->new( host => $config->{mongo_host},
                                         port => $config->{mongo_port} );
 
 my $dbname = $config->{mongo_db};
-$database   = $connection->$dbname;
-$collection = $database->traffic;
-$datasets   = $database->datasets;
+$database     = $connection->$dbname;
+$collection   = $database->traffic;
+$datasets     = $database->datasets;
+$server_stats = $database->server_stats;
 
 # Make sure the indexes exists
 
@@ -120,6 +122,23 @@ $datasets->ensure_index(
                          { unique => 1 }
 );
 
+$server_stats->ensure_index(
+                             {
+                               '_id.pubservhost' => 1,
+                               '_id.sample_time' => 1
+                             },
+                             { unique => 1 }
+);
+
+$server_stats->ensure_index(
+                             {
+                               '_id.pubservhost' => 1,
+                               '_id.sample_time' => 1,
+                               boot_time         => 1
+                             },
+                             { unique => 1 }
+);
+
 #
 # List of items we're interested in
 #
@@ -147,6 +166,8 @@ foreach my $file (@ARGV) {
   my $parse_elapsed = tv_interval( $parse_t0, [gettimeofday] );
   my @data          = ();
 
+  my $server = {};
+
   my $process_t0  = [gettimeofday];
   my $boot_time   = str2time( $result->{boot_time} ) * 1000;
   my $sample_time = str2time( $result->{sample_time} );
@@ -171,6 +192,19 @@ foreach my $file (@ARGV) {
   if ( ref $previous_set eq 'HASH' ) {
     $delta_seconds = ( $sample_time - $previous_set->{sample_time} ) / 1000;
 
+    foreach my $type (qw(opcode rdtype nsstat)) {
+      my $key = sprintf( '%s_qps', $type );
+      $server->{$key} =
+        &calculate_delta(
+                   {
+                     variable => 1,
+                     current => $result->{server_counters}->{requests}->{$type},
+                     previous      => $previous_set->{server}->{$type},
+                     delta_seconds => $delta_seconds
+                   }
+        );
+    }
+
   }
 
   my $lookup_elapsed = tv_interval( $lookup_t0, [gettimeofday] );
@@ -178,6 +212,10 @@ foreach my $file (@ARGV) {
   if ( $previous_set->{sample_time} == $sample_time ) {
     &log_msg( 1, "Skipping already processed file: %s", $file );
     next;
+  }
+
+  foreach my $type (qw(opcode rdtype nsstat)) {
+    $server->{$type} = $result->{server_counters}->{requests}->{$type};
   }
 
   &log_msg( 1, q{delta seconds is: %d}, $delta_seconds );
@@ -233,6 +271,24 @@ foreach my $file (@ARGV) {
                        boot_time => $boot_time
                      }
   ) if !$config->{dry};
+
+  # Save server stats
+
+  $server_stats->insert(
+                         {
+                           _id => {
+                                    pubservhost => $config->{server_name},
+                                    sample_time => $sample_time
+                           },
+                           boot_time  => $boot_time,
+                           opcode     => $server->{opcode},
+                           opcode_qps => $server->{opcode_qps},
+                           rdtype     => $server->{rdtype},
+                           rdtype_qps => $server->{rdtype_qps},
+                           nsstat     => $server->{nsstat},
+                           nsstat_qps => $server->{nsstat_qps}
+                         }
+  );
 
   &log_msg(
     1,
@@ -300,6 +356,27 @@ sub get_previous_set {
     }
   }
 
+  # Pull server stats
+
+  my $server_stats_cursor =
+    $server_stats->query(
+                          {
+                            '_id.pubservhost' => $args->{server_name},
+                            '_id.sample_time' => $sample_time,
+                            boot_time         => $args->{boot_time}
+                          },
+                          {
+                            rdtype => 1,
+                            opcode => 1
+                          }
+    );
+
+  while ( $server_stats_cursor->has_next ) {
+    my $sd = $server_stats_cursor->next;
+    $r->{server}->{opcode} = $sd->{opcode};
+    $r->{server}->{rdtype} = $sd->{rdtype};
+  }
+
   return $r;
 }
 
@@ -324,10 +401,20 @@ sub calculate_delta {
   my $delta_seconds = $args->{delta_seconds};
   my $r             = {};
 
+  my @FIELDS = ();
+
+  if ( $args->{variable} ) {
+    my %f = map { $_ => 1 } ( keys %{$data}, keys %{$previous} );
+    @FIELDS = keys %f;
+  }
+  else {
+    @FIELDS = @WANTED;
+  }
+
   if ( $data && $previous && $delta_seconds > 0 ) {
     $r =
       { map { $_ => ( $data->{$_} - $previous->{$_} ) / $delta_seconds }
-        @WANTED };
+        (@FIELDS) };
   }
   else {
     return;

@@ -2,18 +2,21 @@ package ISC::BIND::Stats::Parser;
 use common::sense;
 use base qw(XML::SAX::Base);
 
+my $elements              = [];
+my $current_view          = q{};
+my $current_zone          = q{};
+my $cluster_counters      = {};
+my $current_query_counter = q{};
+my $valid_zone            = 0;
+my $current_opcode        = q{};
+my $current_nsstat  = q{};
 
-our $elements              = [];
-our $current_view          = q{};
-our $current_zone          = q{};
-our $cluster_counters      = {};
-our $current_query_counter = q{};
-our $valid_zone            = 0;
+my $boot_time;
+my $sample_time;
 
-our $boot_time;
-our $sample_time;
+my $zone = {};
 
-our $zone = {};
+my $server = {};
 
 sub start_document {
   my ( $self, $doc ) = @_;
@@ -73,21 +76,50 @@ sub characters {
           && $elements->[-2] eq 'rdtype' )
   {
     if ( $elements->[-1] eq 'name' ) {
-      $current_query_counter =$data->{Data};
+      $current_query_counter = $data->{Data};
     }
     elsif ( $elements->[-1] eq 'counter' ) {
-      $cluster_counters->{$current_query_counter} = $data->{Data};
+      $server->{requests}->{rdtype}->{$current_query_counter} = $data->{Data};
     }
   }
+
+  elsif (    $elements->[-1] eq 'name'
+          && $elements->[-2] eq 'opcode'
+          && $elements->[-3] eq 'requests' )
+  {
+    $current_opcode = $data->{Data};
+  }
+  elsif (    $elements->[-1] eq 'counter'
+          && $elements->[-2] eq 'opcode'
+          && $elements->[-3] eq 'requests' )
+  {
+    $server->{requests}->{opcode}->{$current_opcode} = $data->{Data};
+  }
+  
+  
+  elsif (    $elements->[-1] eq 'name'
+           && $elements->[-2] eq 'nsstat'
+           && $elements->[-3] eq 'server' )
+   {
+     $current_nsstat = $data->{Data};
+   }
+   elsif (    $elements->[-1] eq 'counter'
+           && $elements->[-2] eq 'nsstat'
+           && $elements->[-3] eq 'server' )
+   {
+     $server->{requests}->{nsstat}->{$current_nsstat} = $data->{Data};
+   }
+  
+  
 
 }
 
 sub end_document {
   return {
-           zone             => $zone,
-           sample_time      => $sample_time,
-           boot_time        => $boot_time,
-           cluster_counters => $cluster_counters
+           zone            => $zone,
+           sample_time     => $sample_time,
+           boot_time       => $boot_time,
+           server_counters => $server
   };
 
 }

@@ -4,7 +4,7 @@ use common::sense;
 use feature ':5.10';
 
 use version;
-our $VERSION = qv('1.1');
+our $VERSION = qv('1.2');
 
 use IO::Uncompress::Bunzip2;
 use IO::File;
