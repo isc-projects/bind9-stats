@@ -35,4 +35,29 @@ ok(ref $data_bz2 eq 'HASH','Data returned from parser (bz2)');
 diag(Dumper($data_bz2));
 
 
+note(q{Trying to parse a emtpy file});
+
+my $failed=$parser->parse({file=>undef});
+ok(!$failed,q{Returned undef while parsing undef});
+
+note(q{Creating one with arguments...});
+my $with_args=ISC::BIND::Stats->new({test=>1});
+
+isa_ok($with_args,'ISC::BIND::Stats');
+
+ok($with_args->{test},'test arg was retained');
+
+note(q{Trying to open an unexisteng file});
+
+my $nxfile=$parser->parse({file=>'/path/to/nowhere.xml'});
+ok(!$nxfile,q{Non-existing file returned undef});
+
+note(q{Trying to open a file that is not XML or BZ2});
+
+my $invfile=$parser->parse({file=>'/etc/passwd'});
+ok(!$invfile,q{Invalid file returned undef});
+
+
+
+
 done_testing();

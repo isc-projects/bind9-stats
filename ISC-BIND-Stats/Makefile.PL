@@ -15,15 +15,18 @@
 
 use inc::Module::Install;
 
+perl_version '5.012000';
+
 requires 'common::sense'    => '3.3';
+requires 'XML::SAX::Base';
+requires 'XML::SAX::ParserFactory';
+requires 'IO::File';
 requires 'Time::HiRes'      => '1.9719';
-requires 'Try::Tiny';
 requires 'IO::Uncompress::Bunzip2';
 requires 'HTTP::Date';
 requires 'MongoDB';
 requires 'Data::Dumper';
 requires 'Getopt::Long';
-
 
 install_script 'bind_stats_import';
 
