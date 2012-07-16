@@ -15,7 +15,8 @@
 
 use inc::Module::Install;
 
-perl_version '5.012000';
+# Set to 5.10 for now
+perl_version '5.010000';
 
 requires 'common::sense'    => '3.3';
 requires 'XML::SAX::Base';

@@ -26,7 +26,7 @@ use common::sense;
 use feature ':5.10';
 
 use version;
-our $VERSION = qv('1.30');
+our $VERSION = qv('1.31');
 
 use IO::Uncompress::Bunzip2;
 use IO::File;
@@ -63,7 +63,6 @@ the resulting values.
 arguments: 
 
 for file: { file => '/path/to/file.xml'}
-
 
 =cut
 
