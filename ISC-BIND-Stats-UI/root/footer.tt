@@ -1,0 +1,92 @@
+
+      <hr>
+
+      <footer>
+        <p>[% site_copyright %]</p>
+      </footer>
+
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+ 
+    <script src="/static/assets/js/bootstrap-alert.js"></script>
+    <script src="/static/assets/js/bootstrap-tooltip.js"></script>
+    <script src="/static/assets/js/bootstrap-popover.js"></script>
+    <script src="/static/assets/js/bootstrap-transition.js"></script>
+    <script src="/static/assets/js/bootstrap-modal.js"></script>
+    <script src="/static/assets/js/bootstrap-dropdown.js"></script>
+    <script src="/static/assets/js/bootstrap-scrollspy.js"></script>
+    <script src="/static/assets/js/bootstrap-tab.js"></script>
+    <script src="/static/assets/js/bootstrap-button.js"></script>
+    <script src="/static/assets/js/bootstrap-collapse.js"></script>
+    <script src="/static/assets/js/bootstrap-carousel.js"></script>
+    <script src="/static/assets/js/bootstrap-typeahead.js"></script>
+
+
+<script type="text/javascript">
+ $(document).ready(function() {
+   
+   // This is to enable alerts close button
+   $(".alert").alert();
+   
+    //This enables popover for hide series
+    $("#seriesOn").popover({
+      title:"View All Series",
+      content:"Enables all the series in the graph"});
+
+    $("#seriesOff").popover({
+       title:"Hide All Series",
+       content:"Disables all the series in the graph",
+       placement:"top"
+    });
+   
+   $("#seriesOn").click(function(){
+     chart.ignoreHiddenSeries=true;
+      var series=chart.series;
+      series.forEach(function(e){
+            e.show();       
+      });
+      chart.redraw();
+   });
+   
+   
+   $("#seriesOff").click(function(){
+     chart.ignoreHiddenSeries=true;
+      var series=chart.series;
+      series.forEach(function(e){
+            e.hide();       
+      });
+      chart.redraw();
+   });
+   
+  
+   
+   
+});
+ 
+ 
+ function replaceData(newData,chart){
+   
+   //console.log("Chart series count: ",chart.series.count());
+   
+   chart.series.forEach(function(s){
+      newData.forEach(function(n){
+        if(n.name == s.name){
+          s.setData(n.data);
+        }
+      }) 
+     });
+
+ }
+ 
+ 
+ 
+</script>
+
+
+
+
+  </body>
+</html>
