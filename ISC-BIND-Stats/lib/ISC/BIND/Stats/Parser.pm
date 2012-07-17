@@ -10,6 +10,7 @@ my $current_query_counter = q{};
 my $valid_zone            = 0;
 my $current_opcode        = q{};
 my $current_nsstat        = q{};
+my $current_zonestat      = q{};
 
 my $boot_time;
 my $sample_time;
@@ -17,7 +18,6 @@ my $sample_time;
 my $zone = {};
 
 my $server = {};
-
 
 sub start_element {
   my ( $self, $el ) = @_;
@@ -50,8 +50,7 @@ sub characters {
     $current_zone =~ s|/IN$||;
     return;
   }
-  
-  
+
   if (    $elements->[-1] eq 'serial'
        && $data->{Data} > 0 )
   {
@@ -116,6 +115,15 @@ sub characters {
          && $elements->[-2] eq 'nsstat' )
     {
       $server->{requests}->{nsstat}->{$current_nsstat} = $data->{Data};
+      return;
+    }
+
+    if ( $elements->[-1] eq 'name' && $elements->[-2] eq 'zonestat' ) {
+      $current_zonestat = $data->{Data};
+      return;
+    }
+    if ( $elements->[-1] eq 'counter' && $elements->[-2] eq 'zonestat' ) {
+      $server->{requests}->{zonestat}->{$current_zonestat} = $data->{Data};
       return;
     }
   }

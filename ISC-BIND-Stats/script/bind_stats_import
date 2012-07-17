@@ -192,7 +192,7 @@ foreach my $file (@ARGV) {
   if ( ref $previous_set eq 'HASH' ) {
     $delta_seconds = ( $sample_time - $previous_set->{sample_time} ) / 1000;
 
-    foreach my $type (qw(opcode rdtype nsstat)) {
+    foreach my $type (qw(opcode rdtype nsstat zonestat)) {
       my $key = sprintf( '%s_qps', $type );
       $server->{$key} =
         &calculate_delta(
@@ -214,7 +214,7 @@ foreach my $file (@ARGV) {
     next;
   }
 
-  foreach my $type (qw(opcode rdtype nsstat)) {
+  foreach my $type (qw(opcode rdtype nsstat zonestat)) {
     $server->{$type} = $result->{server_counters}->{requests}->{$type};
   }
 
@@ -280,13 +280,15 @@ foreach my $file (@ARGV) {
                                     pubservhost => $config->{server_name},
                                     sample_time => $sample_time
                            },
-                           boot_time  => $boot_time,
-                           opcode     => $server->{opcode},
-                           opcode_qps => $server->{opcode_qps},
-                           rdtype     => $server->{rdtype},
-                           rdtype_qps => $server->{rdtype_qps},
-                           nsstat     => $server->{nsstat},
-                           nsstat_qps => $server->{nsstat_qps}
+                           boot_time    => $boot_time,
+                           opcode       => $server->{opcode},
+                           opcode_qps   => $server->{opcode_qps},
+                           rdtype       => $server->{rdtype},
+                           rdtype_qps   => $server->{rdtype_qps},
+                           nsstat       => $server->{nsstat},
+                           nsstat_qps   => $server->{nsstat_qps},
+                           zonestat     => $server->{zonestat},
+                           zonestat_qps => $server->{zonestat_qps}
                          }
   );
 
