@@ -6,6 +6,8 @@ use DateTime;
 use Number::Format;
 use Data::Dumper;
 
+use Geo::IATA;
+
 BEGIN { extends 'Catalyst::Controller'; }
 
 =head1 NAME
@@ -20,11 +22,25 @@ Catalyst Controller.
 
 =cut
 
+my $nf = Number::Format->new;
+my $g; 
+
+sub begin : Private {
+  my($self,$c)=@_;
+  my $config=$c->config;
+  $g=Geo::IATA->new($config->{geo_iata_db});
+  return 1;
+}
+
+
 =head2 index
 
 =cut
 
-my $nf = Number::Format->new;
+
+
+
+
 
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
@@ -141,7 +157,6 @@ sub rdtype : Local {
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
-
 sub opcode : Local {
   my ( $self, $c, $server ) = @_;
   my $now = DateTime->now();
@@ -162,7 +177,6 @@ sub opcode : Local {
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
-
 
 sub tsig_sig0 : Local {
   my ( $self, $c, $server ) = @_;
@@ -210,6 +224,47 @@ sub edns0 : Local {
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
+sub location_table : Local {
+  my ( $self, $c, ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+    wanted => { qps => 1 },
+    find =>
+      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 600 ) * 1000 } },
+    key_uses_geo_iata => 1,
+    key_sub           => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}).*?$};
+      return $g->iata2location($1);
+    },
+    order => { q{_id.sample_time} => -1 }
+  };
+
+  my $data = $c->forward( 'get_from_traffic', [$params] );
+  my $series = [ [ 'Location', 'Percent (%)', 'Traffic (qps)' ] ];
+
+  $c->log->debug( Dumper($data) );
+
+  # Pull the max value from the series that we want:
+
+  my $max = 0;
+  foreach my $s ( @{ $data->{series} } ) {
+    $max = $s->{data}->[-1]->[-1] > $max ? $s->{data}->[-1]->[-1] : $max;
+  }
+
+  map {
+    push @{$series},
+      [
+        $_->{name},
+        sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $max ) * 100 ) * 1,
+        $_->{data}->[-1]->[-1] * 1
+      ]
+  } @{ $data->{series} };
+
+  $c->stash->{data} = { table => $series };
+
+}
+
 sub get_from_traffic : Private {
   my ( $self, $c, $args ) = @_;
 
@@ -245,6 +300,10 @@ sub get_from_traffic : Private {
   $c->log->debug( q{Args: } . Dumper($args) );
 
   my $traffic_cursor = $db->$collection->find( $args->{find}, $args->{wanted} );
+
+  if ( $args->{order} ) {
+    $traffic_cursor->sort( $args->{order} );
+  }
 
   my @series;
 
@@ -293,11 +352,14 @@ sub get_from_traffic : Private {
   my @x_axis          = sort { $a <=> $b } keys %{$x_axis};
   my $total_traffic   = 0;
   my $node_query_load = [];
-
+  my $min             = 0;
+  my $max             = 0;
   foreach my $s ( keys %{$set} ) {
     my @d =
       map { [ $_ * 1, sprintf( q{%.2f}, $set->{$s}->{$_} ) * 1 ] } @x_axis;
     $total_traffic += $d[-1]->[1];
+    $min = $min > $d[-1]->[1] || !$min ? $d[-1]->[1] : $min;
+    $max = $max < $d[-1]->[1] ? $d[-1]->[1] : $max;
     push @series, { name => $s, data => \@d };
   }
 
@@ -305,8 +367,10 @@ sub get_from_traffic : Private {
 
   return {
            categories    => \@x_axis,
-           series        => [ sort {$a->{name} cmp $b->{name} } @series ],
-           traffic_count => $nf->format_number($total_traffic)
+           series        => [ sort { $a->{name} cmp $b->{name} } @series ],
+           traffic_count => $nf->format_number($total_traffic),
+           min           => $min,
+           max           => $max
   };
 
 }

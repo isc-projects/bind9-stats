@@ -30,9 +30,23 @@ The root page (/)
 
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
+  $c->stash->{page} = 'worldmap';
+
+}
+
+=head2 site
+
+Site report
+
+=cut
+
+sub site : Local {
+  my ( $self, $c ) = @_;
   $c->stash->{page} = 'site';
 
 }
+
+
 
 =head2 zone 
 

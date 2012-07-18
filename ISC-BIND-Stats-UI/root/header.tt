@@ -50,7 +50,8 @@
           <div class="nav-collapse">
             <ul class="nav">
               <li class="divider-vertical"></li>
-              <li [% IF page == "site" %]class="active"[% END %]><a href="/">Sites</a></li>
+              <li [% IF page == "worldmap" %]class="active"[% END %]><a href="/">World Map</a></li>
+              <li [% IF page == "site" %]class="active"[% END %]><a href="/site">Sites</a></li>
               <li [% IF page == "zone" %]class="active"[% END %]><a href="/zone">Zones</a></li>
               <li class="dropdown">
                  <a href="#"
