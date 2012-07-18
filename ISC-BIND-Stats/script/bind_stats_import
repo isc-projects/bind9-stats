@@ -142,10 +142,12 @@ $server_stats->ensure_index(
 #
 # List of items we're interested in
 #
-our @WANTED = (
-                'qrysuccess',  'qryauthans', 'qryreferral', 'qrynxrrset',
-                'qryservfail', 'qryformerr', ' qrynxdomain '
+my @WANTED = (
+               'qrysuccess',  'qryauthans', 'qryreferral', 'qrynxrrset',
+               'qryservfail', 'qryformerr', ' qrynxdomain '
 );
+
+my @SERVER_STATS = qw(opcode rdtype nsstat zonestat);
 
 my $first_dataset = { map { $_ => 0 } @WANTED };
 
@@ -192,7 +194,7 @@ foreach my $file (@ARGV) {
   if ( ref $previous_set eq 'HASH' ) {
     $delta_seconds = ( $sample_time - $previous_set->{sample_time} ) / 1000;
 
-    foreach my $type (qw(opcode rdtype nsstat zonestat)) {
+    foreach my $type (@SERVER_STATS) {
       my $key = sprintf( '%s_qps', $type );
       $server->{$key} =
         &calculate_delta(
@@ -214,7 +216,7 @@ foreach my $file (@ARGV) {
     next;
   }
 
-  foreach my $type (qw(opcode rdtype nsstat zonestat)) {
+  foreach my $type (@SERVER_STATS) {
     $server->{$type} = $result->{server_counters}->{requests}->{$type};
   }
 
@@ -274,23 +276,20 @@ foreach my $file (@ARGV) {
 
   # Save server stats
 
-  $server_stats->insert(
-                         {
-                           _id => {
-                                    pubservhost => $config->{server_name},
-                                    sample_time => $sample_time
-                           },
-                           boot_time    => $boot_time,
-                           opcode       => $server->{opcode},
-                           opcode_qps   => $server->{opcode_qps},
-                           rdtype       => $server->{rdtype},
-                           rdtype_qps   => $server->{rdtype_qps},
-                           nsstat       => $server->{nsstat},
-                           nsstat_qps   => $server->{nsstat_qps},
-                           zonestat     => $server->{zonestat},
-                           zonestat_qps => $server->{zonestat_qps}
-                         }
-  );
+  my $server_data = {
+                      _id => {
+                               pubservhost => $config->{server_name},
+                               sample_time => $sample_time
+                      }
+  };
+
+  foreach my $stats_t (@SERVER_STATS) {
+    my $qps_k = sprintf( q{%s_qps}, $stats_t );
+    $server_data->{$stats_t} = $server->{$stats_t};
+    $server_data->{$qps_k}   = $server->{$qps_k};
+  }
+
+  $server_stats->insert($server_data);
 
   &log_msg(
     1,
@@ -360,23 +359,20 @@ sub get_previous_set {
 
   # Pull server stats
 
-  my $server_stats_cursor =
-    $server_stats->query(
-                          {
-                            '_id.pubservhost' => $args->{server_name},
-                            '_id.sample_time' => $sample_time,
-                            boot_time         => $args->{boot_time}
-                          },
-                          {
-                            rdtype => 1,
-                            opcode => 1
-                          }
-    );
+  my $server_stats_cursor = $server_stats->query(
+    {
+      '_id.pubservhost' => $args->{server_name},
+      '_id.sample_time' => $sample_time,
+      boot_time         => $args->{boot_time}
+    },
+
+  );
 
   while ( $server_stats_cursor->has_next ) {
     my $sd = $server_stats_cursor->next;
-    $r->{server}->{opcode} = $sd->{opcode};
-    $r->{server}->{rdtype} = $sd->{rdtype};
+    foreach my $type (@SERVER_STATS) {
+      $r->{server}->{$type} = $sd->{$type};
+    }
   }
 
   return $r;
