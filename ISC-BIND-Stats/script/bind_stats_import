@@ -400,7 +400,7 @@ sub calculate_delta {
     @FIELDS = @WANTED;
   }
 
-  if ( ref $data eq 'HASH' && $previous eq 'HASH' && $delta_seconds > 0 ) {
+  if ( ref $data eq 'HASH' && ref $previous eq 'HASH' && $delta_seconds > 0 ) {
     $r =
       { map { $_ => ( $data->{$_} - $previous->{$_} ) / $delta_seconds }
         (@FIELDS) };
