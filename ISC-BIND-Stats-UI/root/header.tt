@@ -60,8 +60,11 @@
                        <b class="caret"></b>
                  </a>
                  <ul class="dropdown-menu">
-                   <li [% IF page == "v6v4" %]class="active"[% END %]><a href="/v6v4">IPv6 and IPv4</a></li>
-                   <li [% IF page == "tsigsig0" %]class="active"[% END %]><a href="/">TSIG / SIG0</a></li>
+                   <li><a href="/v6v4">IPv6 and IPv4</a></li>
+                   <li><a href="/tsig_sig0">TSIG / SIG0</a></li>
+                   <li><a href="/rdtype">Query Types</a></li>
+                   <li><a href="/edns0">EDNS0</a></li>
+                   <li><a href="/opcode">Opcodes</a></li>
                    
                  </ul>
               

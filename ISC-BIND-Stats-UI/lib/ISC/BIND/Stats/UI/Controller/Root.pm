@@ -58,6 +58,59 @@ sub v6v4 : Local {
 
 }
 
+
+
+=head2 tsigsig0
+
+Provides a page to analyze network traffic.
+
+=cut
+
+sub tsig_sig0 : Local {
+  my ( $self, $c ) = @_;
+
+  $c->stash->{page} = 'tsig_sig0';
+
+}
+
+
+=head2 rtdtype
+
+Provides a page to analyze network traffic.
+
+=cut
+
+sub rdtype : Local {
+  my ( $self, $c ) = @_;
+  $c->stash->{page} = 'rdtype';
+}
+
+=head2 edns0
+
+Provides a page to analyze network traffic.
+
+=cut
+
+sub edns0 : Local {
+  my ( $self, $c ) = @_;
+
+  $c->stash->{page} = 'edns0';
+
+}
+
+=head2 opcode
+
+Provides a page to analyze network traffic.
+
+=cut
+
+sub opcode : Local {
+  my ( $self, $c ) = @_;
+
+  $c->stash->{page} = 'opcode';
+
+}
+
 =head2 default
 
 Standard 404 error page

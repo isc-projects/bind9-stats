@@ -120,6 +120,96 @@ sub v6v4 : Local {
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
+sub rdtype : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+      wanted => { rdtype_qps => 1 },
+      find =>
+        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+      collection  => q{server_stats},
+      dataset_sub => sub { return $_[0]->{rdtype_qps} },
+      use_subkey  => 1
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+
+sub opcode : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+      wanted => { opcode_qps => 1 },
+      find =>
+        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+      collection  => q{server_stats},
+      dataset_sub => sub { return $_[0]->{opcode_qps} },
+      use_subkey  => 1
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+
+sub tsig_sig0 : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+      wanted => { nsstat_qps => 1 },
+      find =>
+        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+      collection     => q{server_stats},
+      dataset_sub    => sub { return $_[0]->{nsstat_qps} },
+      plot_wanted    => [qw(ReqSIG0 ReqTSIG RespSIG0 RespTSIG)],
+      plot_modifiers => [ 1, 1, -1, -1 ],
+      use_subkey     => 1
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+sub edns0 : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+      wanted => { nsstat_qps => 1 },
+      find =>
+        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+      collection     => q{server_stats},
+      dataset_sub    => sub { return $_[0]->{nsstat_qps} },
+      plot_wanted    => [qw(ReqEdns0 RespEDNS0)],
+      plot_modifiers => [ 1, -1 ],
+      use_subkey     => 1
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
 sub get_from_traffic : Private {
   my ( $self, $c, $args ) = @_;
 
@@ -139,6 +229,17 @@ sub get_from_traffic : Private {
   if ( ref $args->{key_sub} ne 'CODE' && !$args->{use_subkey} ) {
     $c->log->error(q{Must provide a code ref to extract the key: });
     return {};
+  }
+
+  # plot modifiers
+  my $plot_modifiers;
+
+  if ( ref $args->{plot_modifiers} && $args->{plot_wanted} ) {
+    $plot_modifiers = {};
+    for ( my $w = 0 ; $w < scalar @{ $args->{plot_wanted} } ; $w++ ) {
+      $plot_modifiers->{ $args->{plot_wanted}->[$w] } =
+        $args->{plot_modifiers}->[$w];
+    }
   }
 
   $c->log->debug( q{Args: } . Dumper($args) );
@@ -172,7 +273,12 @@ sub get_from_traffic : Private {
 
       if ( ref $args->{plot_wanted} ) {
         if ( $k ~~ $args->{plot_wanted} ) {
-          $c->log->debug(qq{Pushing $k -> $jsTime += $v});
+          if ( ref $plot_modifiers ) {
+            $c->log->debug(qq{v: $v k: $k modifier: $plot_modifiers->{$k}});
+            $v *= $plot_modifiers->{$k};
+          }
+
+          #$c->log->debug(qq{Pushing $k -> $jsTime += $v});
           $set->{$key}->{$jsTime} += $v;
         }
       }
@@ -195,9 +301,11 @@ sub get_from_traffic : Private {
     push @series, { name => $s, data => \@d };
   }
 
+  # $c->log->debug( Dumper( \@series ) );
+
   return {
            categories    => \@x_axis,
-           series        => \@series,
+           series        => [ sort @series ],
            traffic_count => $nf->format_number($total_traffic)
   };
 
