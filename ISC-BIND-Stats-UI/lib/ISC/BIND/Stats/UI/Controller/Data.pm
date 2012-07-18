@@ -305,7 +305,7 @@ sub get_from_traffic : Private {
 
   return {
            categories    => \@x_axis,
-           series        => [ sort @series ],
+           series        => [ sort {$a->{name} cmp $b->{name} } @series ],
            traffic_count => $nf->format_number($total_traffic)
   };
 
