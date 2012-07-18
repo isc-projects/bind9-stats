@@ -30,7 +30,7 @@ The root page (/)
 
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
-  $c->stash->{page} = 'main';
+  $c->stash->{page} = 'site';
 
 }
 
@@ -41,10 +41,20 @@ Provides a page to see the data on a per-zone basis
 =cut
 
 sub zone : Local {
-  my ( $self, $c, $zone ) = @_;
+  my ( $self, $c ) = @_;
   $c->stash->{page} = 'zone';
+}
 
- 
+=head2 v6v4
+
+Provides a page to analyze network traffic.
+
+=cut
+
+sub v6v4 : Local {
+  my ( $self, $c ) = @_;
+
+  $c->stash->{page} = 'v6v4';
 
 }
 

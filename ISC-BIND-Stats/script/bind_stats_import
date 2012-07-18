@@ -130,14 +130,6 @@ $server_stats->ensure_index(
                              { unique => 1 }
 );
 
-$server_stats->ensure_index(
-                             {
-                               '_id.pubservhost' => 1,
-                               '_id.sample_time' => 1,
-                               boot_time         => 1
-                             },
-                             { unique => 1 }
-);
 
 #
 # List of items we're interested in
@@ -359,14 +351,13 @@ sub get_previous_set {
 
   # Pull server stats
 
-  my $server_stats_cursor = $server_stats->query(
-    {
-      '_id.pubservhost' => $args->{server_name},
-      '_id.sample_time' => $sample_time,
-      boot_time         => $args->{boot_time}
-    },
-
-  );
+  my $server_stats_cursor =
+    $server_stats->query(
+                          {
+                            '_id.pubservhost' => $args->{server_name},
+                            '_id.sample_time' => $sample_time,
+                          }
+    );
 
   while ( $server_stats_cursor->has_next ) {
     my $sd = $server_stats_cursor->next;
@@ -409,7 +400,7 @@ sub calculate_delta {
     @FIELDS = @WANTED;
   }
 
-  if ( $data && $previous && $delta_seconds > 0 ) {
+  if ( ref $data eq 'HASH' && $previous eq 'HASH' && $delta_seconds > 0 ) {
     $r =
       { map { $_ => ( $data->{$_} - $previous->{$_} ) / $delta_seconds }
         (@FIELDS) };

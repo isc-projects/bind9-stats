@@ -53,6 +53,28 @@ sub zone : Local {
 
 }
 
+sub site : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+    wanted => { qps => 1 },
+    find =>
+      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+    key_sub => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+      return $1;
+      }
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
 sub server : Local {
   my ( $self, $c, $server ) = @_;
   my $now = DateTime->now();
@@ -76,6 +98,28 @@ sub server : Local {
 
 }
 
+sub v6v4 : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+      wanted => { nsstat_qps => 1 },
+      find =>
+        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+      collection  => q{server_stats},
+      dataset_sub => sub { return $_[0]->{nsstat_qps} },
+      plot_wanted => [qw(Requestv4 Requestv6)],
+      use_subkey  => 1
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
 sub get_from_traffic : Private {
   my ( $self, $c, $args ) = @_;
 
@@ -87,30 +131,54 @@ sub get_from_traffic : Private {
   #fetch all unless specified
   $args->{wanted} ||= {};
 
-  if ( ref $args->{key_sub} ne 'CODE' ) {
+  # defaults to 'traffic' collection
+  my $collection = $args->{collection} || q{traffic};
+
+  my $dataset_sub = $args->{dataset_sub} || sub { return $_[0]->{qps} };
+
+  if ( ref $args->{key_sub} ne 'CODE' && !$args->{use_subkey} ) {
     $c->log->error(q{Must provide a code ref to extract the key: });
     return {};
   }
 
   $c->log->debug( q{Args: } . Dumper($args) );
 
-  my $traffic_cursor = $db->traffic->find( $args->{find}, $args->{wanted} );
+  my $traffic_cursor = $db->$collection->find( $args->{find}, $args->{wanted} );
 
   my @series;
 
   my $set    = {};
   my $x_axis = {};
-
+  my $key;
+  my $use_dataset_key = 0;
   while ( $traffic_cursor->has_next ) {
     my $data = $traffic_cursor->next;
     my $time =
       DateTime->from_epoch( epoch => $data->{_id}->{sample_time} / 1000 );
     my $jsTime = $time->epoch * 1000;
 
-    my $key = $args->{key_sub}->($data);
+    if ( ref $args->{key_sub} ) {
+      $key = $args->{key_sub}->($data);
+    }
+    else {
+      $use_dataset_key = 1;
+    }
 
-    while ( my ( $k, $v ) = each %{ $data->{qps} } ) {
-      $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
+    my $dataset = $dataset_sub->($data);
+
+    while ( my ( $k, $v ) = each %{$dataset} ) {
+
+      $key = $k if $use_dataset_key;
+
+      if ( ref $args->{plot_wanted} ) {
+        if ( $k ~~ $args->{plot_wanted} ) {
+          $c->log->debug(qq{Pushing $k -> $jsTime += $v});
+          $set->{$key}->{$jsTime} += $v;
+        }
+      }
+      else {
+        $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
+      }
     }
 
     $x_axis->{$jsTime}++;

@@ -1,10 +1,8 @@
 [% INCLUDE "header.tt" %]
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="hero-unit">
-        
-        <div id="container"></div>
-        
-        [% INCLUDE "controls_under_chart.tt" %]
+                
+        [% INCLUDE "chart.tt" %]
     
               
       </div>
