@@ -15,7 +15,8 @@ var map_rescode_hourly = function() {
     {
         qps: {},
         counters: this.qps,
-        count: 1
+        count: 1,
+        created_time: this.created_time
     });
 };
 
@@ -23,30 +24,29 @@ var reduce_hourly = function(key, values) {
     var r = {
         qps: {},
         counters: {},
-        count: 0
+        count: 0,
     };
     values.forEach(function(v) {
         r.counters = hash_add(v.counters, r.counters);
         r.count++;
+        r.created_time=v.created_time;
     });
     return r;
 }
 
 var finalize_hourly = function(key, value) {
   
-  var now=new Date();
-  var run_date=now.milliseconds;
-  
     var r = {
         qps: {},
         count: 0,
-        created_date: run_date
     };
 
     // for hourly we divide the counters by 12 (5 minutes per hour)
     r.qps = hash_divide(value.counters, 12);
     r.counters = value.counters;
     r.count = value.count;
+    r.created_time = value.created_time;
+    
     return r;
 }
 
