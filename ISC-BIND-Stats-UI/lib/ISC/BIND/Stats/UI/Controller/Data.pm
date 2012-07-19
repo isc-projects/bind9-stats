@@ -248,15 +248,17 @@ sub location_table : Local {
   # Pull the max value from the series that we want:
 
   my $max = 0;
+  my $total = 0;
   foreach my $s ( @{ $data->{series} } ) {
     $max = $s->{data}->[-1]->[-1] > $max ? $s->{data}->[-1]->[-1] : $max;
+    $total +=  $s->{data}->[-1]->[-1];
   }
 
   map {
     push @{$series},
       [
         $_->{name},
-        sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $max ) * 100 ) * 1,
+        sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
         $_->{data}->[-1]->[-1] * 1
       ]
   } @{ $data->{series} };

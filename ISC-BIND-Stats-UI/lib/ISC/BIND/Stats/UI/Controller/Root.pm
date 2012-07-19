@@ -31,6 +31,8 @@ The root page (/)
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'worldmap';
+  $c->stash->{page_title}='World Wide Traffic Distribution';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 
 }
 
@@ -43,7 +45,8 @@ Site report
 sub site : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'site';
-
+  $c->stash->{page_title}='Site Traffic';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
 
@@ -57,6 +60,8 @@ Provides a page to see the data on a per-zone basis
 sub zone : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'zone';
+  $c->stash->{page_title}='Zone Traffic';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
 =head2 v6v4
@@ -69,7 +74,8 @@ sub v6v4 : Local {
   my ( $self, $c ) = @_;
 
   $c->stash->{page} = 'v6v4';
-
+  $c->stash->{page_title}='IPv6 and IPv4 Traffic';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
 
@@ -82,8 +88,9 @@ Provides a page to analyze network traffic.
 
 sub tsig_sig0 : Local {
   my ( $self, $c ) = @_;
-
   $c->stash->{page} = 'tsig_sig0';
+  $c->stash->{page_title}='TSIG and SIG0 Traffic';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 
 }
 
@@ -97,6 +104,8 @@ Provides a page to analyze network traffic.
 sub rdtype : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'rdtype';
+  $c->stash->{page_title}='Query Types Received';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
 =head2 edns0
@@ -107,8 +116,9 @@ Provides a page to analyze network traffic.
 
 sub edns0 : Local {
   my ( $self, $c ) = @_;
-
   $c->stash->{page} = 'edns0';
+  $c->stash->{page_title}='DNS Extensions';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 
 }
 
@@ -120,9 +130,9 @@ Provides a page to analyze network traffic.
 
 sub opcode : Local {
   my ( $self, $c ) = @_;
-
   $c->stash->{page} = 'opcode';
-
+  $c->stash->{page_title}='Operational Codes';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
 =head2 default

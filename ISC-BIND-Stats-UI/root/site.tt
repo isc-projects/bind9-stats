@@ -1,7 +1,6 @@
 [% INCLUDE "header.tt" %]
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="hero-unit"> 
-          <h3>Node Traffic</h3>
           
         [% INCLUDE "chart.tt" %]
               

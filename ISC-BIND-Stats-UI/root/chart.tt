@@ -8,8 +8,10 @@
   <button id="seriesOn" class="btn btn-mini btn-primary"><i class="icon-plus icon-white"></i></button>
   </div>
   
+  <!--
   <div class="span4 offset2">
     <p>Total traffic at top of last hour: <strong>[% traffic_count %] qps</strong>.</p>
   </div>
-  
+
+  -->
   </div>
