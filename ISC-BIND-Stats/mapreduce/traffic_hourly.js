@@ -88,7 +88,7 @@ else {
         out: {
             reduce: "rescode_traffic_hourly"
         },
-        finalize: finalize_hourly
+     //   finalize: finalize_hourly
     });
     
     // Create index
