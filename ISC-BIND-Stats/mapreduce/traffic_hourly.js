@@ -34,7 +34,8 @@ var reduce_hourly = function(key, values) {
 var finalize_hourly = function(key, value) {
     var r = {
         qps: {},
-        count: 0
+        count: 0,
+        created_date: new Date()
     };
 
     // for hourly we divide the counters by 12 (5 minutes per hour)
@@ -46,33 +47,28 @@ var finalize_hourly = function(key, value) {
 
 
 // pull the last sample_time from the DB
-var last_rescode_cur = db.rescode_traffic_hourly.find({},
+var last_processed_cur = db.mr_rescode_traffic_hourly_log.find({},
 {
-    "_id.sample_time": 1
-},
-{
-    _id: 1
+    last_processed_time: 1
 }).sort({
-    "_id.sample_time": -1
+    last_processed_time: -1
 }).limit(1);
 
-var now = new Date();
-var hour = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours());
+// this is where we store the mapreduce output
+var mr_output;
 
-if (last_rescode_cur.hasNext()) {
-    var last_rescode = last_rescode_cur.next();
+// if we have a previous set processed
+if (last_processed_cur.hasNext()) {
+    var last_processed = last_processed_cur.next();
+    var last_processed_time = last_processed.last_processed_time;
 
-    print("Running mapreduce with: gte: "
-    + (new Date(last_rescode._id.sample_time.getTime() + 3600000))
-    + " ; lt: " + hour + "\n"
-    );
+    print("Running mapreduce with: gt: " + last_processed_time + "\n");
 
     // Run mapReduce with the previous value
-    db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
+    mr_output=db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
         query: {
-            "_id.sample_time": {
-                $gte: last_rescode._id.sample_time.getTime() + 3600000,
-                $lt: hour.getTime()
+            created_time: {
+                $gt: last_processed_time
             }
         },
         out: {
@@ -82,26 +78,33 @@ if (last_rescode_cur.hasNext()) {
     });
 
 }
- else {
+else {
     // This is the first time running
-    db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
+    mr_output=db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
         out: {
             reduce: "rescode_traffic_hourly"
         },
-        query: {
-            "_id.sample_time": {
-                $lt: hour.getTime()
-            }
-        },
         finalize: finalize_hourly
     });
+    
     // Create index
     db.rescode_traffic_hourly.ensureIndex({
         "_id.sample_time": 1,
         "_id.pubservhost": 1,
         "_id.zone": 1
     });
+    
+    // Index the created time field
+    db.rescode_traffic_hourly.ensureIndex({
+      created_time:1
+    });
 }
 
+if(mr_output.ok){
+  db.mr_rescode_traffic_hourly_log.insert({
+    "last_processed_time":last_processed_time,
+    "result": mr_output
+  });
+}
 
 

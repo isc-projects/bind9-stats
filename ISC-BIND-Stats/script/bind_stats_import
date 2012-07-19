@@ -6,17 +6,16 @@ bind_stats_import - Import BIND XML stats into MongoDB
 
 =head1 SYNOPSIS
 
-  bind_stats_import [options] -s server_name --collection collection_name *xml
-  
+  bind_stats_import [options] -s server_name --mongo-db db_name *xml
+
   Other Options
-  
+
   -s|--server   host name of the server
   -d|--dry-run  do everything except save the data on db
   --mongo-host  name or ip address of mongo server (defaults to localhost)
   --mongo-port  port number where mongo is running  (defaults to 27017)
   --mongo-db    database name in mongodb
   -v|--verbose  be more verbose when running
-  
 
 =head1 DESCRIPTION
 
@@ -44,6 +43,8 @@ use Getopt::Long;
 
 use ISC::BIND::Stats;
 
+use Pod::Usage;
+
 =item $config
 
 This is the main configuration for the program, it provides reasonable defaults,
@@ -70,13 +71,11 @@ my $options = GetOptions(
 );
 
 if ( !$config->{server_name} ) {
-  say q{Must supply --server|-s server_name};
-  exit 1;
+  &show_usage(q{Must supply --server|-s server_name});
 }
 
 if ( !$config->{mongo_db} ) {
-  say q{Must supply --mongo_db database_name};
-  exit 1;
+  &show_usage(q{Must supply --mongo_db database_name});
 }
 
 my $connection;
@@ -130,7 +129,6 @@ $server_stats->ensure_index(
                              { unique => 1 }
 );
 
-
 #
 # List of items we're interested in
 #
@@ -146,6 +144,8 @@ my $first_dataset = { map { $_ => 0 } @WANTED };
 my $counter = 0;
 
 my $parser = ISC::BIND::Stats->new;
+
+my $insert_time = time() * 1000;
 
 #
 # Main process cycle
@@ -222,9 +222,10 @@ foreach my $file (@ARGV) {
                zone        => $zone,
                sample_time => $sample_time
       },
-      boot_time => $boot_time,
-      serial    => $data->{serial},
-      counters  => {
+      created_time => $insert_time,
+      boot_time    => $boot_time,
+      serial       => $data->{serial},
+      counters     => {
         map {
           $_ => $data->{counters}->{$_}
             || 0
@@ -292,6 +293,24 @@ q{done (parsing: %.2f, processing: %.2f, inserting: %.2f, calc_delta: %.2f, zone
     $lookup_elapsed,
     scalar @processed
   );
+}
+
+=item show_usage
+
+Show the usage and exits
+
+=cut
+
+sub show_usage {
+  my ($message) = @_;
+  pod2usage(
+             {
+               -message => $message,
+               -exitval => 1,
+               -verbose => 1
+             }
+  );
+
 }
 
 =item get_previous_set
