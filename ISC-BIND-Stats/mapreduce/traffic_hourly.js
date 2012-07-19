@@ -3,10 +3,6 @@
 */
 
 
-var now=new Date();
-var run_date=now.milliseconds;
-
-
 var map_rescode_hourly = function() {
     var date = new Date();
     date.setTime(this._id.sample_time);
@@ -37,6 +33,10 @@ var reduce_hourly = function(key, values) {
 }
 
 var finalize_hourly = function(key, value) {
+  
+  var now=new Date();
+  var run_date=now.milliseconds;
+  
     var r = {
         qps: {},
         count: 0,
