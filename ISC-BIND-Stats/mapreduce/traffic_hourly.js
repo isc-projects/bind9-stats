@@ -59,11 +59,12 @@ var last_processed_cur = db.mr_rescode_traffic_hourly_log.find({}, {
 
 // this is where we store the mapreduce output
 var mr_output;
+var last_processed_time;
 
 // if we have a previous set processed
 if (last_processed_cur.hasNext()) {
   var last_processed = last_processed_cur.next();
-  var last_processed_time = last_processed.last_processed_time;
+  last_processed_time = last_processed.last_processed_time;
 
   print("Running mapreduce with: gt: " + last_processed_time + "\n");
 
