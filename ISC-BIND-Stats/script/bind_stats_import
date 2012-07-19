@@ -113,6 +113,8 @@ $collection->ensure_index(
                            }
 );
 
+$collection->ensure_index( { created_time => 1 } );
+
 $datasets->ensure_index(
                          {
                            '_id.pubservhost' => 1,

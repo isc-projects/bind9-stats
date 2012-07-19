@@ -2,6 +2,11 @@
 * Map Reduce procedure for the traffic collection hourly
 */
 
+
+var now=new Date();
+var run_date=now.milliseconds;
+
+
 var map_rescode_hourly = function() {
     var date = new Date();
     date.setTime(this._id.sample_time);
@@ -35,7 +40,7 @@ var finalize_hourly = function(key, value) {
     var r = {
         qps: {},
         count: 0,
-        created_date: new Date()
+        created_date: run_date
     };
 
     // for hourly we divide the counters by 12 (5 minutes per hour)
@@ -47,10 +52,7 @@ var finalize_hourly = function(key, value) {
 
 
 // pull the last sample_time from the DB
-var last_processed_cur = db.mr_rescode_traffic_hourly_log.find({},
-{
-    last_processed_time: 1
-}).sort({
+var last_processed_cur = db.mr_rescode_traffic_hourly_log.find({},{last_processed_time: 1}).sort({
     last_processed_time: -1
 }).limit(1);
 
