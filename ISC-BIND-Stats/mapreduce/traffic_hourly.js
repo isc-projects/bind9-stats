@@ -2,50 +2,51 @@
 * Map Reduce procedure for the traffic collection hourly
 */
 
-var map_rescode_hourly = function() {
-    var date = new Date();
-    date.setTime(this._id.sample_time);
-    var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0);
+function map_rescode_hourly() {
+  var date = new Date();
+  date.setTime(this._id.sample_time);
+  var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0);
 
-    emit({
-      sample_time: sample_hour,
-      pubservhost: this._id.pubservhost,
-      zone: this._id.zone
-    }, {
-      qps: {},
-      counters: this.qps,
-      count: 1,
-      created_time: this.created_time
-    });
-    };
+  emit({
+    sample_time: sample_hour,
+    pubservhost: this._id.pubservhost,
+    zone: this._id.zone
+  }, {
+    qps: {},
+    counters: this.qps,
+    count: 1,
+    created_time: this.created_time
+  });
 
-var reduce_hourly = function(key, values) {
-    var r = {
-      qps: {},
-      counters: {},
-      count: 0,
-      created_time: 0
-    };
-    values.forEach(function(v) {
-      r.counters = hash_add(v.counters, r.counters);
-      r.count++;
-      r.created_time = v.created_time;
-    });
-    return r;
-    };
+}
+
+function reduce_hourly(key, values) {
+  var r = {
+    qps: {},
+    counters: {},
+    count: 0,
+    created_time: 0
+  };
+  values.forEach(function(v) {
+    r.counters = hash_add(v.counters, r.counters);
+    r.count++;
+    r.created_time = v.created_time;
+  });
+  return r;
+}
 
 
 
-var finalize_hourly = function(key, value) {
-    // for hourly we divide the counters by 12 (5 minutes per hour)
-    var r = {
-      "qps": hash_divide(value.counters, 12),
-      "counters": value.counters,
-      "count": value.count,
-      "created_time": value.created_time
-    };
-    return r;
-    };
+function finalize_hourly(key, value) {
+  // for hourly we divide the counters by 12 (5 minutes per hour)
+  var r = {
+    "qps": hash_divide(value.counters, 12),
+    "counters": value.counters,
+    "count": value.count,
+    "created_time": value.created_time
+  };
+  return r;
+}
 
 
 
