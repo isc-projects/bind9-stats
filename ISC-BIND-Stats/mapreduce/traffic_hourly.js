@@ -4,9 +4,11 @@
 
 
 var map_rescode_hourly = function() {
-    var date = new Date();
-    date.setTime(this._id.sample_time);
-    var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0);
+    //var date = new Date();
+    //date.setTime(this._id.sample_time);
+    //var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0);
+
+    var sample_hour -= this._id.sample_time % 86400000;
     emit({
         sample_time: sample_hour,
         pubservhost: this._id.pubservhost,
