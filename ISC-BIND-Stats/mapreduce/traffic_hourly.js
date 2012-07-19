@@ -2,7 +2,7 @@
 * Map Reduce procedure for the traffic collection hourly
 */
 
-function map_rescode_hourly() {
+var map_rescode_hourly=function () {
   var date = new Date();
   date.setTime(this._id.sample_time);
   var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0);
@@ -17,10 +17,9 @@ function map_rescode_hourly() {
     count: 1,
     created_time: this.created_time
   });
+};
 
-}
-
-function reduce_hourly(key, values) {
+var reduce_hourly=function (key, values) {
   var r = {
     qps: {},
     counters: {},
@@ -33,11 +32,11 @@ function reduce_hourly(key, values) {
     r.created_time = v.created_time;
   });
   return r;
-}
+};
 
 
 
-function finalize_hourly(key, value) {
+var finalize_hourly=function (key, value) {
   // for hourly we divide the counters by 12 (5 minutes per hour)
   var r = {
     "qps": hash_divide(value.counters, 12),
@@ -46,10 +45,17 @@ function finalize_hourly(key, value) {
     "created_time": value.created_time
   };
   return r;
-}
+};
 
 
 
+x=db.runCommand( { mapreduce:"traffic",
+			      map:map_reduce_hourly,
+			      reduce:reduce_hourly,
+			      out: { reduce: "test" },
+			      finalize:finalize_hourly
+			    });
+/*
 
 // pull the last sample_time from the DB
 var last_processed_cur = db.mr_rescode_traffic_hourly_log.find({}, {
@@ -111,3 +117,14 @@ if (mr_output.ok) {
     "result": mr_output
   });
 }
+
+
+
+*/
+
+
+
+
+
+
+
