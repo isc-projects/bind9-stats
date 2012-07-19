@@ -76,7 +76,8 @@ if (last_processed_cur.hasNext()) {
         out: {
             reduce: "rescode_traffic_hourly"
         },
-        finalize: finalize_hourly
+        finalize: finalize_hourly,
+        jsMode:1
     });
 
 }
@@ -88,7 +89,8 @@ else {
         out: {
             reduce: "rescode_traffic_hourly"
         },
-     //   finalize: finalize_hourly
+        finalize: finalize_hourly,
+        jsMode:1
     });
     
     // Create index
