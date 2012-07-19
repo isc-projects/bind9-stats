@@ -24,7 +24,7 @@ var reduce_hourly = function(key, values) {
     var r = {
         qps: {},
         counters: {},
-        count: 0,
+        count: 0
     };
     values.forEach(function(v) {
         r.counters = hash_add(v.counters, r.counters);
@@ -38,7 +38,7 @@ var finalize_hourly = function(key, value) {
   
     var r = {
         qps: {},
-        count: 0,
+        count: 0
     };
 
     // for hourly we divide the counters by 12 (5 minutes per hour)
@@ -81,6 +81,8 @@ if (last_processed_cur.hasNext()) {
 
 }
 else {
+  print("Running mapreduce for the first time!\n");
+  
     // This is the first time running
     mr_output=db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
         out: {
