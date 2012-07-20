@@ -128,10 +128,9 @@ if (mr_output.ok) {
   var last_processed_cur=db.rescode_traffic_hourly.find({},{created_time:1}).sort({created_time:-1}).limit(1);
   
   if(last_processed_cur.hasNext()){
-    var last_processed = last_processed_cur.next();
-    last_processed_time = last_processed.last_processed_time;  
+    var lp = last_processed_cur.next();  
     db.mr_rescode_traffic_hourly_log.insert({
-      "last_processed_time": last_processed_time,
+      "last_processed_time": lp.created_time,
       "result": mr_output
     });
   }
