@@ -245,6 +245,64 @@ function generateZoomableStackedGraph(prop){
 }
 
 
+function writeTable(series,prop){
+  
+  var target=prop.target;
+
+  var table="<table class=\"table table-striped table-condensed table-bordered\"><thead><tr><th>#</th><th>Node</th><th>Last Value in Set (qps)</th></tr></thead><tbody>";
+  var i=0;
+  
+  
+  series.sort(function(a,b){
+    var data_a=a.data;
+    var data_b=b.data;
+    
+    var last_a=data_a[data_a.length - 1 ];
+    var last_b=data_b[data_b.length - 1 ];
+    
+    return last_b[1] - last_a[1];
+  });
+  
+  
+  var detail_url=prop.detail_url;
+  
+  series.forEach(function(v){
+    var data=v.data;
+    
+    data.sort(function(a,b){
+      return a[0] - b[0]; 
+    });
+    
+    console.log(v.name);
+    data.forEach(function(v){
+      var d=new Date(v[0]);
+      console.log( d.getUTCDate() + "/" + d.getUTCHours() + ":" + d.getUTCMinutes() + "," + v[1]);
+    });
+    console.log("\n");
+    
+    var last_value=data.pop();
+    
+    table += "<tr><td>" + (++i) + "</td><td>";
+    
+      if(detail_url){
+        table+="<a href=\"" + prop.detail_url + "/" + v.name +"\">" + v.name + "</a>";
+      }
+      else{
+        table+= v.name;
+      }
+
+      table+="</td><td>" + last_value[1] + "</td></tr>";
+    
+  
+  })
+  
+  table+="</tbody></table>";
+  
+  $("#"+target).html(table);
+  
+}
+
+
 
 function replaceData(newData,chart){
    

@@ -7,28 +7,9 @@
               
       </div>
 
-
+<div id="summary_table"></div>
     
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
-
-
+ 
 
         <script type="text/javascript">
 
@@ -37,14 +18,8 @@
        var dataSeries=[];
        var graphTitle="Traffic Across all Nodes";
 
-
-
-
-
-
         var chart;
         $(document).ready(function() {
-
 
              $.ajax({
                 url: '/data/zone',  
@@ -57,22 +32,15 @@
                     subtitle:"",
                     target:"container"
                   });
-              
+                  
+                  writeTable(data.series,{target:"summary_table",detail_url:'/zone_detail'});
+                    
                   }
               });
-
-
-
-
-
-          
 
         });
 
         </script>
-
-
-
 
 [% INCLUDE "footer.tt" %]
 

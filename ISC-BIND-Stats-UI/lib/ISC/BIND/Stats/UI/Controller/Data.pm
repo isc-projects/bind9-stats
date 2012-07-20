@@ -47,11 +47,17 @@ sub zone : Local {
 
   my $now = DateTime->now();
 
+  $zone =~ s{^root$}{\.};
+
   my $params = {
     wanted => { qps => 1 },
     find =>
       { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
-    key_sub => sub { return $_[0]->{_id}->{zone} }
+    key_sub => sub {
+      my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
+      $z =~ s{^\.$}{root};             # replace the '.' with 'root'
+      return $z;                       # return the resulting name
+      }
   };
 
   if ($zone) {
@@ -61,6 +67,31 @@ sub zone : Local {
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 
+}
+
+sub zone_detail : Local {
+  my ( $self, $c, $zone ) = @_;
+
+  my $now = DateTime->now();
+
+  $zone =~ s{^root$}{\.};
+
+  my $params = {
+    wanted => { qps => 1 },
+    find   => {
+            q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 },
+            q{_id.zone}        => $zone
+    },
+    plot_wanted => [qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)],
+
+  };
+
+  if($zone){
+    $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+  }
+  else{
+    $c->stash->{data}={};
+  }
 }
 
 sub site : Local {
@@ -76,7 +107,10 @@ sub site : Local {
   my $params = {
     wanted  => { qps => 1 },
     key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+      $_[0]->{_id}->{pubservhost} =~
+        m{(\w{3}\d{1}).*?$};    # use the pubservhost name but
+                                # use only the first three leters
+                                # that identify the site name
       return $1;
       }
   };
@@ -444,8 +478,6 @@ sub get_from_traffic : Private {
             $c->log->debug(qq{v: $v k: $k modifier: $plot_modifiers->{$k}});
             $v *= $plot_modifiers->{$k};
           }
-
-          #$c->log->debug(qq{Pushing $k -> $jsTime += $v});
           $set->{$key}->{$jsTime} += $v;
         }
       }
@@ -462,6 +494,7 @@ sub get_from_traffic : Private {
   my $node_query_load = [];
   my $min             = 0;
   my $max             = 0;
+
   foreach my $s ( keys %{$set} ) {
     my @d =
       map { [ $_ * 1, sprintf( q{%.2f}, $set->{$s}->{$_} ) * 1 ] } @x_axis;

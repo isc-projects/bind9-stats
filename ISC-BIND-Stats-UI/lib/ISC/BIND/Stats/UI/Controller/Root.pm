@@ -68,6 +68,27 @@ sub zone : Local {
   $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
 }
 
+
+=head2 zone_detail
+
+Provides zone detailed information
+
+=cut
+
+sub zone_detail : Local {
+  my ( $self, $c, $zone) = @_;
+  
+  $c->stash->{page} = 'zone_detail';
+  $c->stash->{page_title}='Zone Detail';
+  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  
+
+  
+ 
+  $c->stash->{zone_name}=$zone;
+}
+
+
 =head2 v6v4
 
 Provides a page to analyze network traffic.
