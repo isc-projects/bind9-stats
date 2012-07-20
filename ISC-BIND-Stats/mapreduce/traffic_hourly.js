@@ -66,7 +66,7 @@ if (last_processed_cur.hasNext()) {
   var last_processed = last_processed_cur.next();
   last_processed_time = last_processed.last_processed_time;
 
-  print("Running mapreduce with: gt: " + last_processed_time + "\n");
+  print("Running mapreduce with: $gt: " + last_processed_time + "\n");
 
   // Run mapReduce with the previous value
   
@@ -103,7 +103,7 @@ if (last_processed_cur.hasNext()) {
 
   // Index the created time field
   db.rescode_traffic_hourly.ensureIndex({
-    created_time: 1
+    "value.created_time": 1
   });
 }
 
@@ -111,7 +111,7 @@ if (last_processed_cur.hasNext()) {
 print("Checking for mapreduce result...");
 if (mr_output.ok) {
   print("OK\n");
-  var last_processed_cur=db.rescode_traffic_hourly.find({}).sort({created_time:-1}).limit(1);
+  var last_processed_cur=db.rescode_traffic_hourly.find({}).sort({"value.created_time":-1}).limit(1);
   if(last_processed_cur.hasNext()){
     var lp = last_processed_cur.next();
     print("Last created_time in rescode_traffic_hourly: " + lp.value.created_time + "\n");  
@@ -120,6 +120,9 @@ if (mr_output.ok) {
       "result": mr_output
     });
   }
+}
+else{
+  print("An error occurred processing the set:\n");
 }
 
 
