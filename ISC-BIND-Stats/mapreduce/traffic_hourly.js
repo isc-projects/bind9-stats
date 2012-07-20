@@ -28,7 +28,7 @@ var reduce_hourly=function (key, values) {
   values.forEach(function(v) {
     r.counters = hash_add(v.counters, r.counters);
     r.count++;
-    r.created_time = v.created_time;
+    r.created_time = v.created_time > r.created_time ? v.created_time:r.created_time;
   });
   return r;
 };
