@@ -70,8 +70,9 @@ sub site : Local {
   my $from = $c->request->param(q{from}) || 0;
   my $to   = $c->request->param(q{to})   || 0;
 
-  ( $from, $to ) = map { sprintf( q{%d}, $_ ) * 1 } $from, $to;
-
+  if ( $from && $to ) {
+    ( $from, $to ) = map { sprintf( q{%d}, $_ ) * 1 } $from, $to;
+  }
   my $params = {
     wanted  => { qps => 1 },
     key_sub => sub {
@@ -109,9 +110,11 @@ sub site_hourly : Local {
   my $from = $c->request->param(q{from}) || 0;
   my $to   = $c->request->param(q{to})   || 0;
 
-  ( $from, $to ) =
-    map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
-    $from, $to;
+  if ( $from && $to ) {
+    ( $from, $to ) =
+      map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
+      $from, $to;
+  }
 
   my $params = {
     wanted  => { q{value.qps} => 1 },

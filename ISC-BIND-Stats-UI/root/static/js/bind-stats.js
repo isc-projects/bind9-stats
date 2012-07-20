@@ -66,7 +66,7 @@ function generateZoomableStackedGraph(prop){
     	chart = new Highcharts.Chart({
     		chart: {
     			renderTo: prop.target,
-    			type: 'spline',
+    			type: 'area',
     			zoomType: 'x',
     			events:{
     			  selection: function selectChartRange(event){
@@ -222,6 +222,9 @@ function generateZoomableStackedGraph(prop){
     			}
     		},
     		plotOptions: {
+    		   area: {
+              stacking: "normal"
+            },
     		  series:{
     		    marker:{
     		      enabled:false,
