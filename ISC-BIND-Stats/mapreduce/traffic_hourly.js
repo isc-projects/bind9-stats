@@ -125,12 +125,12 @@ mr_output=db.runCommand( { "mapreduce":"traffic",
 }
 
 if (mr_output.ok) {
-  var last_processed_cur=db.rescode_traffic_hourly.find({},{created_time:1}).sort({created_time:-1}).limit(1);
+  var last_processed_cur=db.rescode_traffic_hourly.find({}).sort({created_time:-1}).limit(1);
   
   if(last_processed_cur.hasNext()){
     var lp = last_processed_cur.next();  
     db.mr_rescode_traffic_hourly_log.insert({
-      "last_processed_time": lp.created_time,
+      "last_processed_time": lp.value.created_time,
       "result": mr_output
     });
   }
