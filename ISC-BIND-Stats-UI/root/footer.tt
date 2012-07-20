@@ -66,21 +66,7 @@
    
 });
  
- 
- function replaceData(newData,chart){
-   
-   //console.log("Chart series count: ",chart.series.count());
-   
-   chart.series.forEach(function(s){
-      newData.forEach(function(n){
-        if(n.name == s.name){
-          s.setData(n.data);
-        }
-      }) 
-     });
 
- }
- 
  
  
 </script>

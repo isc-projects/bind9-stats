@@ -240,6 +240,8 @@ function generateZoomableStackedGraph(prop){
     		series: prop.data
     	});
     });
+    
+    return chart;
 }
 
 

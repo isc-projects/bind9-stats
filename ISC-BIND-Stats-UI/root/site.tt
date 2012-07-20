@@ -47,7 +47,7 @@
                   newData=data.series;
                   
                   
-                  generateZoomableStackedGraph({
+                 chart=generateZoomableStackedGraph({
                     title:graphTitle,
                     data:data.series,
                     subtitle:"This is the Subtitle",
