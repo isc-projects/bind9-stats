@@ -69,18 +69,6 @@ if (last_processed_cur.hasNext()) {
   print("Running mapreduce with: gt: " + last_processed_time + "\n");
 
   // Run mapReduce with the previous value
-  /* mr_output = db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
-    query: {
-      created_time: {
-        $gt: last_processed_time
-      }
-    },
-    out: {
-      reduce: "rescode_traffic_hourly"
-    },
-    finalize: finalize_hourly
-  });
-  */
   
   mr_output=db.runCommand( { "mapreduce":"traffic",
   			      "map": map_rescode_hourly,
@@ -90,20 +78,15 @@ if (last_processed_cur.hasNext()) {
   			      "finalize":finalize_hourly
   			    });
 
+  print("Done!");
+
 
 } else {
   print("Running mapreduce for the first time!\n");
 
   // This is the first time running
- /* mr_output = db.traffic.mapReduce(map_rescode_hourly, reduce_hourly, {
-    out: {
-      reduce: "rescode_traffic_hourly"
-    },
-    finalize: finalize_hourly
-  });
-*/
 
-mr_output=db.runCommand( { "mapreduce":"traffic",
+  mr_output=db.runCommand( { "mapreduce":"traffic",
  			      "map": map_rescode_hourly,
  			      "reduce": reduce_hourly,
  			      "out": "rescode_traffic_hourly",
@@ -124,11 +107,14 @@ mr_output=db.runCommand( { "mapreduce":"traffic",
   });
 }
 
+
+print("Checking for mapreduce result...");
 if (mr_output.ok) {
+  print("OK\n");
   var last_processed_cur=db.rescode_traffic_hourly.find({}).sort({created_time:-1}).limit(1);
-  
   if(last_processed_cur.hasNext()){
-    var lp = last_processed_cur.next();  
+    var lp = last_processed_cur.next();
+    print("Last created_time in rescode_traffic_hourly: " + lp.value.created_time + "\n");  
     db.mr_rescode_traffic_hourly_log.insert({
       "last_processed_time": lp.value.created_time,
       "result": mr_output
