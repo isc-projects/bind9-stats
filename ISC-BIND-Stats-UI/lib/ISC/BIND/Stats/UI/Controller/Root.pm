@@ -47,6 +47,10 @@ sub site : Local {
   $c->stash->{page} = 'site';
   $c->stash->{page_title}='Site Traffic';
   $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{info_message}=q{This graph has 'zoom-in' features, please select a region and the graph
+  will be zoomed in.. If the range is within a week, it will trigger an 'hourly' resolution. If the
+  range is within a day, it will show a 5 minute intervals.
+  };
 }
 
 

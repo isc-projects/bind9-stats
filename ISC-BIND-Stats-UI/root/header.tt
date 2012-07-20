@@ -79,7 +79,14 @@
     [% IF error_message %]
     <div class="alert alert-error">
     <a class="close" data-dismiss="alert" href="#">&times;</a>
-     Error: [% error_message %]
+     <h4>Error:</h4> [% error_message %]
+    </div>
+    [% END %]
+    
+    [% IF info_message %]
+    <div class="alert alert-info">
+      <a class="close" data-dismiss="alert" href="#">&times;</a>
+      <h4>Important Info</h4> [% info_message %]
     </div>
     [% END %]
     
@@ -88,5 +95,8 @@
         <small>[% page_subtitle %]</small>
         </h1>
     </div>
+    
+    
+    
     
 
