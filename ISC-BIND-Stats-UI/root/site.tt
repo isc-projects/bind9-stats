@@ -42,15 +42,17 @@
 
 
              $.ajax({
-                url: '/data/site',  
+                url: '/data/site_daily',  
                 success: function(data){
                   newData=data.series;
                   
-                  generateStackedGraph({
+                  
+                  generateZoomableStackedGraph({
                     title:graphTitle,
                     data:data.series,
-                    subtitle:"",
-                    target:"container"
+                    subtitle:"This is the Subtitle",
+                    target:"container",
+                    type:"site"
                   });
               
                   }

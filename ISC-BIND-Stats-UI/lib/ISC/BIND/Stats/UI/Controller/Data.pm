@@ -23,24 +23,18 @@ Catalyst Controller.
 =cut
 
 my $nf = Number::Format->new;
-my $g; 
+my $g;
 
 sub begin : Private {
-  my($self,$c)=@_;
-  my $config=$c->config;
-  $g=Geo::IATA->new($config->{geo_iata_db});
+  my ( $self, $c ) = @_;
+  my $config = $c->config;
+  $g = Geo::IATA->new( $config->{geo_iata_db} );
   return 1;
 }
-
 
 =head2 index
 
 =cut
-
-
-
-
-
 
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
@@ -73,14 +67,97 @@ sub site : Local {
   my ( $self, $c, $server ) = @_;
   my $now = DateTime->now();
 
+  my $from = $c->request->param(q{from}) || 0;
+  my $to   = $c->request->param(q{to})   || 0;
+
+  ( $from, $to ) = map { sprintf( q{%d}, $_ ) * 1 } $from, $to;
+
   my $params = {
-    wanted => { qps => 1 },
-    find =>
-      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
+    wanted  => { qps => 1 },
     key_sub => sub {
       $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
       return $1;
       }
+  };
+
+  if ( $from && $to ) {
+    $params->{find} = {
+                        q{_id.sample_time} => {
+                                                q{$gte} => $from,
+                                                q{$lte} => $to
+                        }
+    };
+  }
+  else {
+    $params->{find} =
+      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } };
+  }
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+sub site_hourly : Local {
+  my ( $self, $c, $server ) = @_;
+
+  my $now = DateTime->now;
+
+  my $from = $c->request->param(q{from}) || 0;
+  my $to   = $c->request->param(q{to})   || 0;
+
+  ( $from, $to ) =
+    map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
+    $from, $to;
+
+  my $params = {
+    wanted  => { q{value.qps} => 1 },
+    key_sub => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+      return $1;
+    },
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
+    collection  => q{rescode_traffic_hourly}
+  };
+
+  if ( $from && $to ) {
+    $params->{find} = {
+                        q{_id.sample_time} => {
+                                                q{$gte} => $from,
+                                                q{$lte} => $to
+                        }
+    };
+  }
+  else {
+    $params->{find} =
+      { q{_id.sample_time} =>
+        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
+  }
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+
+}
+
+sub site_daily : Local {
+  my ( $self, $c, $server ) = @_;
+
+  my $params = {
+    wanted  => { q{value.qps} => 1 },
+    find    => {},
+    key_sub => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+      return $1;
+    },
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
+    collection  => q{rescode_traffic_daily}
   };
 
   if ($server) {
@@ -89,6 +166,7 @@ sub site : Local {
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+
 }
 
 sub server : Local {
@@ -232,8 +310,7 @@ sub location_table : Local {
     wanted => { qps => 1 },
     find =>
       { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 600 ) * 1000 } },
-    key_uses_geo_iata => 1,
-    key_sub           => sub {
+    key_sub => sub {
       $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}).*?$};
       return $g->iata2location($1);
     },
@@ -247,11 +324,11 @@ sub location_table : Local {
 
   # Pull the max value from the series that we want:
 
-  my $max = 0;
+  my $max   = 0;
   my $total = 0;
   foreach my $s ( @{ $data->{series} } ) {
     $max = $s->{data}->[-1]->[-1] > $max ? $s->{data}->[-1]->[-1] : $max;
-    $total +=  $s->{data}->[-1]->[-1];
+    $total += $s->{data}->[-1]->[-1];
   }
 
   map {
@@ -266,6 +343,34 @@ sub location_table : Local {
   $c->stash->{data} = { table => $series };
 
 }
+
+=item get_from_traffic
+
+This subroutine was design to centralize all the data fetches from
+mongo. The main reason for this, is because all the queries are very
+similar, and the data processing needed to perform such operations
+is already too cumbersome to have several copies around.
+
+The sub has been implemented in such a way that its behavior can
+be heavily modified via arguments.
+
+The sub receives a single hash reference with the following
+options:
+
+{
+  wanted      => { field=> 1 },        # same as MongoDB wanted feature
+  find        => { field=> "value" },  # same as MongoDB find argument
+  order       => { field=> -1 },       # same as MongoDB cursor sort
+  key_sub     => sub { my $data=shift; # filter to set/transform the key
+                    return $data->{_id}->{pubservhost};
+                  },
+  dataset_sub    => sub { return $_[0]->{nsstat_qps} }, # sub to select the dataset
+  plot_wanted    => [qw(ReqEdns0 RespEDNS0)],     # fields to select from the dataset
+  plot_modifiers => [ 1, -1 ],                    # multipliers for the data (i.e.: if you want the first
+                                                  # ReqEdns0 positive but RespEDNS0 negative)
+}
+
+=cut
 
 sub get_from_traffic : Private {
   my ( $self, $c, $args ) = @_;
@@ -282,11 +387,6 @@ sub get_from_traffic : Private {
   my $collection = $args->{collection} || q{traffic};
 
   my $dataset_sub = $args->{dataset_sub} || sub { return $_[0]->{qps} };
-
-  if ( ref $args->{key_sub} ne 'CODE' && !$args->{use_subkey} ) {
-    $c->log->error(q{Must provide a code ref to extract the key: });
-    return {};
-  }
 
   # plot modifiers
   my $plot_modifiers;
@@ -314,9 +414,12 @@ sub get_from_traffic : Private {
   my $key;
   my $use_dataset_key = 0;
   while ( $traffic_cursor->has_next ) {
-    my $data = $traffic_cursor->next;
+    my $data        = $traffic_cursor->next;
+    my $sample_time = $data->{_id}->{sample_time};
     my $time =
-      DateTime->from_epoch( epoch => $data->{_id}->{sample_time} / 1000 );
+      ref $sample_time
+      ? $sample_time
+      : DateTime->from_epoch( epoch => $data->{_id}->{sample_time} / 1000 );
     my $jsTime = $time->epoch * 1000;
 
     if ( ref $args->{key_sub} ) {
