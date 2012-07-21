@@ -53,9 +53,9 @@ var finalize_daily = function(key, value) {
 
 // pull the last sample_time from the DB
 var last_processed_cur = db.mr_rescode_traffic_daily_log.find({}, {
-  "value.last_processed_time": 1
+  "last_processed_time": 1
 }).sort({
-  "value.last_processed_time": -1
+  "last_processed_time": -1
 }).limit(1);
 
 // this is where we store the mapreduce output
