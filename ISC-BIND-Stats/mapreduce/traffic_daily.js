@@ -1,61 +1,60 @@
 /*
-* Map Reduce procedure for traffic daily
+* Map Reduce procedure for the traffic collection daily
 */
 
-var map_rescode_daily = function() {
-    var date = this._id.sample_time;
-    var sample_day = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0);
-    emit({
-        sample_time: sample_day,
-        pubservhost: this._id.pubservhost,
-        zone: this._id.zone
-    },
-    {
-        qps: {},
-        counters: this.value.qps,
-        count: 1,
-        created_time: this.value.created_time
-    });
+var map_rescode_daily=function () {
+  var date = new Date();
+  date.setTime(this._id.sample_time);
+  var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0);
+  emit({
+    "sample_time": sample_hour,
+    "pubservhost": this._id.pubservhost,
+    "zone": this._id.zone
+  }, {
+    "qps": {},
+    "counters": this.qps,
+    "count": 1,
+    "created_time": this.created_time
+  });
 };
 
-var reduce_daily = function(key, values) {
-    var r = {
-        qps: {},
-        counters: {},
-        count: 0,
-        created_time:0
-    };
-    values.forEach(function(v) {
-        r.counters = hash_add(v.counters, r.counters);
-        r.count++;
-        r.created_time=v.created_time > r.created_time ? v.created_time:r.created_time;
-    });
-    return r;
-}
+var reduce_daily=function (key, values) {
+  var r = {
+    "qps": {},
+    "counters": {},
+    "count": 0,
+    "created_time": 0
+  };
+  values.forEach(function(v) {
+    r.counters = hash_add(v.counters, r.counters);
+    r.count++;
+    r.created_time = v.created_time > r.created_time ? v.created_time:r.created_time;
+  });
+  return r;
+};
 
-var finalize_daily = function(key, value) {
-    var r = {
-        qps: {},
-        count: 0,
-        created_time:0
-    };
 
-    // for daily we divide the counters by 24 (24 hours/day)
-    r.qps = hash_divide(value.counters, 24);
-    r.counters = value.counters;
-    r.count = value.count;
-    r.created_time = value.created_time;
-    return r;
-}
+
+var finalize_daily=function (key, value) {
+  // for daily we divide the counters by 288 (5 minutes samples per day)
+  var r = {
+    "qps": hash_divide(value.counters, 288),
+    "counters": value.counters,
+    "count": value.count,
+    "created_time": value.created_time
+  };
+  return r;
+};
+
 
 
 
 
 // pull the last sample_time from the DB
 var last_processed_cur = db.mr_rescode_traffic_daily_log.find({}, {
-  "last_processed_time": 1
+  last_processed_time: 1
 }).sort({
-  "last_processed_time": -1
+  last_processed_time: -1
 }).limit(1);
 
 // this is where we store the mapreduce output
@@ -71,10 +70,10 @@ if (last_processed_cur.hasNext()) {
 
   // Run mapReduce with the previous value
   
-  mr_output=db.runCommand( { "mapreduce":"rescode_traffic_hourly",
+  mr_output=db.runCommand( { "mapreduce":"traffic",
   			      "map": map_rescode_daily,
   			      "reduce": reduce_daily,
-  			      "query":{ "value.created_time": { $gt: last_processed_time }},
+  			      "query":{ "created_time": { $gt: last_processed_time }},
   			      "out": { reduce: "rescode_traffic_daily" },
   			      "finalize":finalize_daily
   			    });
@@ -87,7 +86,7 @@ if (last_processed_cur.hasNext()) {
 
   // This is the first time running
 
-  mr_output=db.runCommand( { "mapreduce":"rescode_traffic_hourly",
+  mr_output=db.runCommand( { "mapreduce":"traffic",
  			      "map": map_rescode_daily,
  			      "reduce": reduce_daily,
  			      "out": "rescode_traffic_daily",
@@ -125,3 +124,13 @@ if (mr_output.ok) {
 else{
   print("An error occurred processing the set:\n");
 }
+
+
+
+
+
+
+
+
+
+
