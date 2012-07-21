@@ -136,7 +136,7 @@ $server_stats->ensure_index(
 #
 my @WANTED = (
                'qrysuccess',  'qryauthans', 'qryreferral', 'qrynxrrset',
-               'qryservfail', 'qryformerr', ' qrynxdomain '
+               'qryservfail', 'qryformerr', 'qrynxdomain'
 );
 
 my @SERVER_STATS = qw(opcode rdtype nsstat zonestat);
@@ -318,8 +318,8 @@ sub show_usage {
 =item get_previous_set
 
 Fetches the records stored in the previous dataset, by first looking into the 
-' datasets ' collection in MongoBD, and termining what was the last sample_time
-stored in the ' traffic ' collection.
+'datasets' collection in MongoBD, and termining what was the last sample_time
+stored in the 'traffic' collection.
 
 Once the sample_time is determined, another query is sent to the database with
 to retrieve all of the records.
