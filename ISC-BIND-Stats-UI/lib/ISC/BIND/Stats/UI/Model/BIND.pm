@@ -4,8 +4,8 @@ use Moose;
 BEGIN { extends 'Catalyst::Model::MongoDB' };
 
 __PACKAGE__->config(
-	host => 'localhost',
-	port => '27017',
+	host => '',
+	port => '',
 	dbname => '',
 	collectionname => '',
 	gridfs => '',

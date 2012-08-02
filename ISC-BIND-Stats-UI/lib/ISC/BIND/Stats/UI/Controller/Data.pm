@@ -24,30 +24,47 @@ Catalyst Controller.
 
 my $nf = Number::Format->new;
 my $g;
+my $config;
 
 sub begin : Private {
   my ( $self, $c ) = @_;
-  my $config = $c->config;
-  $g = Geo::IATA->new( $config->{geo_iata_db} );
+  $config = $c->config;
   return 1;
 }
 
 =head2 index
+  This method is only there to prevent any errors when calling the /data/
+  path. 
+  
+  It should just return an empty hash.
 
 =cut
 
 sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
+  $c->stash->{data} = {};
 
-  $c->response->redirect('/');
 }
 
+=head2 zone
+  returns a the data using the zone name as the key.
+  
+=cut
+
 sub zone : Local {
-  my ( $self, $c, $zone ) = @_;
+  my ( $self, $c, @zones ) = @_;
 
   my $now = DateTime->now();
 
-  $zone =~ s{^root$}{\.};
+  $c->log->info(Dumper(@zones));
+
+  if ( q{root} ~~ \@zones ) {
+
+    foreach my $z (@zones) {
+      $z =~ s{^root$}{\.};
+    }
+
+  }
 
   my $params = {
     wanted => { qps => 1 },
@@ -60,9 +77,14 @@ sub zone : Local {
       }
   };
 
-  if ($zone) {
-    $c->log->debug( q{Setting zone to: } . $zone );
-    $params->{find}->{q{_id.zone}} = $zone;
+  my $zones_find = [];
+
+  foreach my $zone (@zones) {
+    push @{$zones_find}, { q{_id.zone} => $zone };
+  }
+
+  if ( scalar @{$zones_find} ) {
+    $params->{find}->{q{$or}} = $zones_find;
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
@@ -74,6 +96,7 @@ sub zone_detail : Local {
 
   my $now = DateTime->now();
 
+  $zone //= q{};
   $zone =~ s{^root$}{\.};
 
   my $params = {
@@ -82,15 +105,17 @@ sub zone_detail : Local {
             q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 },
             q{_id.zone}        => $zone
     },
-    plot_wanted => [qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)],
+    plot_wanted => [
+        qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
+    ],
 
   };
 
-  if($zone){
+  if ($zone) {
     $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
   }
-  else{
-    $c->stash->{data}={};
+  else {
+    $c->stash->{data} = {};
   }
 }
 
@@ -240,7 +265,6 @@ sub v6v4 : Local {
       collection  => q{server_stats},
       dataset_sub => sub { return $_[0]->{nsstat_qps} },
       plot_wanted => [qw(Requestv4 Requestv6)],
-      use_subkey  => 1
   };
 
   if ($server) {
@@ -261,7 +285,6 @@ sub rdtype : Local {
         { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
       collection  => q{server_stats},
       dataset_sub => sub { return $_[0]->{rdtype_qps} },
-      use_subkey  => 1
   };
 
   if ($server) {
@@ -282,7 +305,6 @@ sub opcode : Local {
         { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
       collection  => q{server_stats},
       dataset_sub => sub { return $_[0]->{opcode_qps} },
-      use_subkey  => 1
   };
 
   if ($server) {
@@ -305,7 +327,6 @@ sub tsig_sig0 : Local {
       dataset_sub    => sub { return $_[0]->{nsstat_qps} },
       plot_wanted    => [qw(ReqSIG0 ReqTSIG RespSIG0 RespTSIG)],
       plot_modifiers => [ 1, 1, -1, -1 ],
-      use_subkey     => 1
   };
 
   if ($server) {
@@ -328,7 +349,6 @@ sub edns0 : Local {
       dataset_sub    => sub { return $_[0]->{nsstat_qps} },
       plot_wanted    => [qw(ReqEdns0 RespEDNS0)],
       plot_modifiers => [ 1, -1 ],
-      use_subkey     => 1
   };
 
   if ($server) {
@@ -342,6 +362,8 @@ sub edns0 : Local {
 sub location_table : Local {
   my ( $self, $c, ) = @_;
   my $now = DateTime->now();
+
+  $g = Geo::IATA->new( $config->{geo_iata_db} );
 
   my $params = {
     wanted => { qps => 1 },
@@ -357,7 +379,7 @@ sub location_table : Local {
   my $data = $c->forward( 'get_from_traffic', [$params] );
   my $series = [ [ 'Location', 'Percent (%)', 'Traffic (qps)' ] ];
 
-  $c->log->debug( Dumper($data) );
+  #$c->log->debug( Dumper($data) );
 
   # Pull the max value from the series that we want:
 
@@ -475,7 +497,8 @@ sub get_from_traffic : Private {
       if ( ref $args->{plot_wanted} ) {
         if ( $k ~~ $args->{plot_wanted} ) {
           if ( ref $plot_modifiers ) {
-            $c->log->debug(qq{v: $v k: $k modifier: $plot_modifiers->{$k}});
+
+            #  $c->log->debug(qq{v: $v k: $k modifier: $plot_modifiers->{$k}});
             $v *= $plot_modifiers->{$k};
           }
           $set->{$key}->{$jsTime} += $v;
@@ -495,9 +518,11 @@ sub get_from_traffic : Private {
   my $min             = 0;
   my $max             = 0;
 
+  # $c->log->debug(Dumper($set));
+
   foreach my $s ( keys %{$set} ) {
     my @d =
-      map { [ $_ * 1, sprintf( q{%.2f}, $set->{$s}->{$_} ) * 1 ] } @x_axis;
+      map { [ $_ * 1, sprintf( q{%.2f}, $set->{$s}->{$_} // 0 ) * 1 ] } @x_axis;
     $total_traffic += $d[-1]->[1];
     $min = $min > $d[-1]->[1] || !$min ? $d[-1]->[1] : $min;
     $max = $max < $d[-1]->[1] ? $d[-1]->[1] : $max;
@@ -521,16 +546,28 @@ sub end : Private {
   $c->forward('View::JSON');
 }
 
-=head1 AUTHOR
-
-Francisco Obispo
-
 =head1 LICENSE
 
-This library is free software. You can redistribute it and/or modify
-it under the same terms as Perl itself.
+BSD
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2012  Internet Systems Consortium, Inc. ("ISC")
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
 
 =cut
+
 
 __PACKAGE__->meta->make_immutable;
 

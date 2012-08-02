@@ -17,7 +17,6 @@ use Catalyst::Runtime 5.80;
 #                 directory
 
 use Catalyst qw/
-    -Debug
     ConfigLoader
     Static::Simple
 /;
@@ -45,6 +44,10 @@ __PACKAGE__->config(
 __PACKAGE__->setup();
 
 
+__PACKAGE__->log->levels( qw/info warn error fatal/ ) unless __PACKAGE__->debug;
+
+
+
 =head1 NAME
 
 ISC::BIND::Stats::UI - Catalyst based application
@@ -55,7 +58,7 @@ ISC::BIND::Stats::UI - Catalyst based application
 
 =head1 DESCRIPTION
 
-[enter your description here]
+User Interface for Name Server statistics
 
 =head1 SEE ALSO
 
@@ -63,13 +66,29 @@ L<ISC::BIND::Stats::UI::Controller::Root>, L<Catalyst>
 
 =head1 AUTHOR
 
-Francisco Obispo
+Internet Systems Consortium
 
 =head1 LICENSE
 
-This library is free software. You can redistribute it and/or modify
-it under the same terms as Perl itself.
+BSD
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2012  Internet Systems Consortium, Inc. ("ISC")
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
 
 =cut
+
 
 1;

@@ -18,11 +18,13 @@
        var dataSeries=[];
        var graphTitle="Traffic Across all Nodes";
 
+       var zones="[% zones.join('/') %]";
+
         var chart;
         $(document).ready(function() {
 
              $.ajax({
-                url: '/data/zone',  
+                url: '/data/zone/' + zones,  
                 success: function(data){
                   newData=data.series;
                   
