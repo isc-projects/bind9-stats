@@ -53,10 +53,10 @@ var reduce_hourly=function (key, values) {
 var finalize_hourly=function (key, value) {
   // for hourly we divide the counters by 12 (5 minutes per hour)
   var r = {
-    "zonestats_qps": hash_divide(value.zonestats_qps,12),
-    "nsstat_qps": hash_divide(value.nsstat_qps,12),
-    "rdtype_qps" : hash_divide(value.rdtype_qps,12),
-    "opcode_qps" : hash_divide(value.opcode_qps,12),
+    "zonestats_qps": hash_divide(value.zonestats_counters,12),
+    "nsstat_qps": hash_divide(value.nsstat_counters,12),
+    "rdtype_qps" : hash_divide(value.rdtype_counters,12),
+    "opcode_qps" : hash_divide(value.opcode_counters,12),
     "zonestats_counters" : value.zonestats_counters,
     "nsstat_counters" : value.nsstat_counters,
     "rdtype_counters" : value.rdtype_counters,
