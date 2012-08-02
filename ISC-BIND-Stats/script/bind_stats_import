@@ -98,7 +98,6 @@ $server_stats = $database->server_stats;
 $collection->ensure_index(
                            {
                              '_id.pubservhost' => 1,
-                             '_id.customer'    => 1,
                              '_id.zone'        => 1,
                              '_id.sample_time' => 1
                            },
@@ -283,6 +282,7 @@ foreach my $file (@ARGV) {
     $server_data->{$stats_t} = $server->{$stats_t};
     $server_data->{$qps_k}   = $server->{$qps_k};
   }
+  $server_data->{created_time}=$insert_time;
 
   $server_stats->insert($server_data);
 
