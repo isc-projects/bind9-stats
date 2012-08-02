@@ -91,7 +91,7 @@ if (last_processed_cur.hasNext()) {
 
   // Run mapReduce with the previous value
   
-  mr_output=db.runCommand( { "mapreduce":"traffic",
+  mr_output=db.runCommand( { "mapreduce":"server_stats",
   			      "map": map_rescode_hourly,
   			      "reduce": reduce_hourly,
   			      "query":{ "created_time": { $gt: last_processed_time }},
@@ -107,7 +107,7 @@ if (last_processed_cur.hasNext()) {
 
   // This is the first time running
 
-  mr_output=db.runCommand( { "mapreduce":"traffic",
+  mr_output=db.runCommand( { "mapreduce":"server_stats",
  			      "map": map_rescode_hourly,
  			      "reduce": reduce_hourly,
  			      "out": "server_stats_hourly",
