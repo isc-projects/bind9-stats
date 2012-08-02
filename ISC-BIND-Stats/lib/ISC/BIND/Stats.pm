@@ -26,7 +26,7 @@ use common::sense;
 use feature ':5.10';
 
 use version;
-our $VERSION = qv('1.51');
+our $VERSION = qv('1.52');
 
 use IO::Uncompress::Bunzip2;
 use IO::File;
