@@ -69,14 +69,15 @@ sub zone : Local {
   my $params = {
     collection  => q{global_traffic_daily},
     wanted      => { q{value.qps} => 1 },
-    dataset_sub=> sub {return $_[0]->{value}->{qps}},
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
     plot_wanted => [
         qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
     ],
-    #find => {
-    #   q{_id.sample_time} =>
-    #     { q{$gte} => DateTime->from_epoch( epoch => ( $now->epoch - 86400 ) ) }
-    #},
+
+   #find => {
+   #   q{_id.sample_time} =>
+   #     { q{$gte} => DateTime->from_epoch( epoch => ( $now->epoch - 86400 ) ) }
+   #},
     key_sub => sub {
       my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
       $z =~ s{^\.$}{root};             # replace the '.' with 'root'
@@ -721,15 +722,20 @@ sub location_table : Local {
 
   $g = Geo::IATA->new( $config->{geo_iata_db} );
 
+  my $db = $c->model('BIND')->db;
+  my $last_dataset =
+    $db->datasets->find()->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
+
   my $params = {
-    wanted => { qps => 1 },
-    find =>
-      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 600 ) * 1000 } },
+    wanted      => { q{opcode_qps} => 1 },
+    collection  => q{server_stats},
+    dataset_sub => sub             { return $_[0]->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find    => { q{_id.sample_time} => $last_dataset->{_id}->{sample_time} },
     key_sub => sub {
       $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}).*?$};
       return $g->iata2location($1);
-    },
-    order => { q{_id.sample_time} => -1 }
+      }
   };
 
   my $data = $c->forward( 'get_from_traffic', [$params] );
@@ -755,7 +761,10 @@ sub location_table : Local {
       ]
   } @{ $data->{series} };
 
-  $c->stash->{data} = { table => $series };
+  $c->stash->{data} = {
+                        table       => $series,
+                        sample_time => $last_dataset->{_id}->{sample_time} * 1000
+  };
 
 }
 
@@ -822,6 +831,11 @@ sub get_from_traffic : Private {
     $traffic_cursor->sort( $args->{order} );
   }
 
+  if ( $args->{limit} ) {
+    $c->log->debug( 'Setting limit to: ' . $args->{limit} );
+    $traffic_cursor->limit( $args->{limit} );
+  }
+
   my @series;
 
   my $set    = {};
@@ -849,8 +863,11 @@ sub get_from_traffic : Private {
 
     my $dataset = $dataset_sub->($data);
 
+    $c->log->debug( 'Dataset used: ' . Dumper($dataset) );
+
     while ( my ( $k, $v ) = each %{$dataset} ) {
-  #    $c->log->debug('k: ' . $k . ' v: ' . $v);
+
+      #    $c->log->debug('k: ' . $k . ' v: ' . $v);
       $key = $k if $use_dataset_key;
 
       if ( ref $args->{plot_wanted} ) {
@@ -862,6 +879,7 @@ sub get_from_traffic : Private {
         }
       }
       else {
+        $c->log->debug('using qps counters...');
         $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
       }
     }
@@ -875,7 +893,7 @@ sub get_from_traffic : Private {
   my $min             = 0;
   my $max             = 0;
 
-   #$c->log->debug('Set: ' . Dumper($set));
+  #$c->log->debug('Set: ' . Dumper($set));
 
   foreach my $s ( keys %{$set} ) {
     my @d =

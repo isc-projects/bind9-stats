@@ -32,7 +32,7 @@ sub index : Path : Args(0) {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'worldmap';
   $c->stash->{page_title}='World Wide Traffic Distribution';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}=q{<div id='subtitle'></div>};
 
 }
 

@@ -32,6 +32,10 @@
                      // console.log(JSON.stringify(data));
                       
                       locationData=data.table;
+                      sample_time=new Date(data.sample_time);
+                      
+                      $('#subtitle').html('updated: ' + sample_time);
+                      
                       drawMarkersMap(locationData);
                       writeLocationTable(locationData,{target:"locationTable"});
                       

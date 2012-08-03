@@ -1,0 +1,104 @@
+#!/usr/bin/env perl
+use common::sense;
+use LWP::UserAgent;
+use URI::Escape;
+use JSON;
+use Encode;
+use Data::Dumper;
+use MongoDB;
+use DBI;
+use Time::HiRes qw(usleep);
+
+my $ua   = LWP::UserAgent->new;
+my $json = JSON->new->allow_nonref;
+
+$ua->timeout(10);
+
+my $query = "San Francisco, California, US";
+
+my $dbfile = $ARGV[0] // q{};
+
+if ( !-f $dbfile ) {
+  say q{Please provide the Geo::IATA DB File};
+  exit 1;
+}
+
+
+
+my $dbname='f-root';
+
+my $mongo=MongoDB::Connection->new(host=>'stats-ng.sns.isc.org')->$dbname;
+
+my $locations=$mongo->locations;
+
+
+my $exists={};
+
+my $all_cursor=$locations->find();
+
+while($all_cursor->has_next){
+  my $loc=$all_cursor->next;
+  $exists->{$loc->{_id}}++;
+  say q{storing... } . $loc->{_id};
+}
+
+
+my $dbh =
+  DBI->connect( sprintf( q{dbi:SQLite:dbname=%s}, $dbfile ), undef, undef );
+
+my $sth = $dbh->prepare(q{SELECT * FROM IATA}) || die('cannot prepare query');
+
+$sth->execute;
+
+while ( my $data = $sth->fetchrow_hashref ) {
+
+  if (! $exists->{$data->{iata}}){
+    my $location = &get_location( $data->{location} );
+     my $doc={};
+
+      # say Dumper($location);
+
+
+     if ( $location->{status} eq 'OK' ) {
+       $doc = {
+                   _id   => $data->{iata},
+                   value => $location->{results}->[0]
+       };
+
+       $locations->insert($doc);
+
+       say $data->{iata} . " inserted";
+
+
+     }
+     else{
+       say $data->{iata} . ' returned ' . $location->{status};
+     }
+     usleep(250000);
+  }
+  else{
+    say q{Skipping } . $data->{iata};
+  }
+
+ 
+
+
+
+}
+
+$sth->finish;
+$dbh->disconnect;
+
+sub get_location {
+  my ($query) = @_;
+
+  my $response = $ua->get(
+        'http://maps.googleapis.com/maps/api/geocode/json?sensor=false&address='
+          . uri_escape($query) );
+
+  my $content;
+  if ( $response->is_success ) {
+    return $json->decode( decode_utf8( $response->content ) );
+  }
+}
+
