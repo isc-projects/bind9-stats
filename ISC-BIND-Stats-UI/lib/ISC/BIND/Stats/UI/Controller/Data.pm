@@ -56,7 +56,7 @@ sub zone : Local {
 
   my $now = DateTime->now();
 
-  $c->log->info(Dumper(@zones));
+  $c->log->info( Dumper(@zones) );
 
   if ( q{root} ~~ \@zones ) {
 
@@ -259,12 +259,16 @@ sub v6v4 : Local {
   my $now = DateTime->now();
 
   my $params = {
-      wanted => { nsstat_qps => 1 },
-      find =>
-        { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } },
-      collection  => q{server_stats},
-      dataset_sub => sub { return $_[0]->{nsstat_qps} },
-      plot_wanted => [qw(Requestv4 Requestv6)],
+          wanted => { q{value.nsstat_qps} => 1 },
+          find   => {
+            q{_id.sample_time} => {
+              q{$gte} =>
+                DateTime->from_epoch( epoch => ( $now->epoch - ( 86400 * 7 ) ) )
+            }
+          },
+          collection  => q{server_stats_hourly},
+          dataset_sub => sub { return $_[0]->{value}->{nsstat_qps} },
+          plot_wanted => [qw(Requestv4 Requestv6)],
   };
 
   if ($server) {
@@ -472,6 +476,9 @@ sub get_from_traffic : Private {
   my $x_axis = {};
   my $key;
   my $use_dataset_key = 0;
+
+  $c->log->debug( q{Records to be retrieved: } . $traffic_cursor->count );
+
   while ( $traffic_cursor->has_next ) {
     my $data        = $traffic_cursor->next;
     my $sample_time = $data->{_id}->{sample_time};
@@ -567,7 +574,6 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 =cut
-
 
 __PACKAGE__->meta->make_immutable;
 
