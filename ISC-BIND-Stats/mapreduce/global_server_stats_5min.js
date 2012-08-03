@@ -1,12 +1,12 @@
 /*
-* Map Reduce procedure for the traffic collection daily
+* Map Reduce procedure for the traffic collection hourly
 */
 
 
-var map_rescode_daily=function () {
+var map_rescode_hourly=function () {
   var date = new Date();
   date.setTime(this._id.sample_time);
-  var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0);
+  var sample_hour = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), 0, 0);
   emit({
     "sample_time": sample_hour,
   }, {
@@ -23,7 +23,7 @@ var map_rescode_daily=function () {
   });
 };
 
-var reduce_daily=function (key, values) {
+var reduce_hourly=function (key, values) {
   var r = {
     "zonestats_qps": {},
     "zonestats_counters": {},
@@ -49,13 +49,13 @@ var reduce_daily=function (key, values) {
 
 
 
-var finalize_daily=function (key, value) {
-  // for daily we divide the counters by 12 (5 minutes per hour)
+var finalize_hourly=function (key, value) {
+  // for hourly we divide the counters by 12 (5 minutes per hour)
   var r = {
-    "zonestats_qps": hash_divide(value.zonestats_counters,288),
-    "nsstat_qps": hash_divide(value.nsstat_counters,288),
-    "rdtype_qps" : hash_divide(value.rdtype_counters,288),
-    "opcode_qps" : hash_divide(value.opcode_counters,288),
+    "zonestats_qps": hash_divide(value.zonestats_counters,1),
+    "nsstat_qps": hash_divide(value.nsstat_counters,1),
+    "rdtype_qps" : hash_divide(value.rdtype_counters,1),
+    "opcode_qps" : hash_divide(value.opcode_counters,1),
     "zonestats_counters" : value.zonestats_counters,
     "nsstat_counters" : value.nsstat_counters,
     "rdtype_counters" : value.rdtype_counters,
@@ -71,7 +71,7 @@ var finalize_daily=function (key, value) {
 
 
 // pull the last sample_time from the DB
-var last_processed_cur = db.mr_global_server_stats_daily_log.find({}, {
+var last_processed_cur = db.mr_global_server_stats_5min_log.find({}, {
   last_processed_time: 1
 }).sort({
   last_processed_time: -1
@@ -91,11 +91,11 @@ if (last_processed_cur.hasNext()) {
   // Run mapReduce with the previous value
   
   mr_output=db.runCommand( { "mapreduce":"server_stats",
-  			      "map": map_rescode_daily,
-  			      "reduce": reduce_daily,
+  			      "map": map_rescode_hourly,
+  			      "reduce": reduce_hourly,
   			      "query":{ "created_time": { $gt: last_processed_time }},
-  			      "out": { reduce: "global_server_stats_daily" },
-  			      "finalize":finalize_daily
+  			      "out": { reduce: "global_server_stats_5min" },
+  			      "finalize":finalize_hourly
   			    });
 
   print("Done!");
@@ -107,22 +107,22 @@ if (last_processed_cur.hasNext()) {
   // This is the first time running
 
   mr_output=db.runCommand( { "mapreduce":"server_stats",
- 			      "map": map_rescode_daily,
- 			      "reduce": reduce_daily,
- 			      "out": "global_server_stats_daily",
- 			      "finalize":finalize_daily
+ 			      "map": map_rescode_hourly,
+ 			      "reduce": reduce_hourly,
+ 			      "out": "global_server_stats_5min",
+ 			      "finalize":finalize_hourly
  			    });
 
 
   // Create index
-  db.global_server_stats_daily.ensureIndex({
+  db.global_server_stats_5min.ensureIndex({
     "_id.sample_time": 1,
     "_id.pubservhost": 1,
     "_id.zone": 1
   });
 
   // Index the created time field
-  db.global_server_stats_daily.ensureIndex({
+  db.global_server_stats_5min.ensureIndex({
     "value.created_time": 1
   });
 }
@@ -131,11 +131,11 @@ if (last_processed_cur.hasNext()) {
 print("Checking for mapreduce result...");
 if (mr_output.ok) {
   print("OK\n");
-  var last_processed_cur=db.global_server_stats_daily.find({}).sort({"value.created_time":-1}).limit(1);
+  var last_processed_cur=db.global_server_stats_5min.find({}).sort({"value.created_time":-1}).limit(1);
   if(last_processed_cur.hasNext()){
     var lp = last_processed_cur.next();
-    print("Last created_time in global_server_stats_daily: " + lp.value.created_time + "\n");  
-    db.mr_global_server_stats_daily_log.insert({
+    print("Last created_time in global_server_stats_5min: " + lp.value.created_time + "\n");  
+    db.mr_global_server_stats_5min_log.insert({
       "last_processed_time": lp.value.created_time,
       "result": mr_output
     });
