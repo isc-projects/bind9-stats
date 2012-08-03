@@ -213,7 +213,7 @@ function generateZoomableStackedGraph(prop){
     			title: {
     				text: 'Queries per Second (qps)'
     			},
-    			min: 0
+    			//min: 0
     		},
     		tooltip: {
     			formatter: function() {
@@ -243,6 +243,61 @@ function generateZoomableStackedGraph(prop){
     
     return chart;
 }
+
+
+function writeLocationTable(series,prop){
+  target=prop.target;
+  var table="<table class=\"table table-striped table-condensed table-bordered\"><thead><tr>";
+  table +="<th>#</th>";
+  
+  var heading=series[0];
+  
+  heading.forEach(function(h){
+    table+="<th>" + h + "</th>";
+  });
+  
+  table+= "</tr></thead><tbody>";
+  
+  
+   var i=0;
+   var data=series;
+   data.shift();
+
+   data.sort(function(a,b){
+     var data_a=a[2];
+     var data_b=b[2];
+
+     return data_b - data_a;
+   });
+
+
+   var detail_url=prop.detail_url;
+
+   data.forEach(function(v){
+     var row=v;
+
+     table += "<tr><td>" + (++i) + "</td><td>";
+
+       if(detail_url){
+         table+="<a href=\"" + prop.detail_url + "/" + v.name +"\">" + row[0] + "</a>";
+       }
+       else{
+         table+= row[0];
+       }
+
+       table+="</td><td>" + row[1] + "</td>"
+       table+="<td>" + row[2] + "</td>";
+       table+="</tr>";
+       
+   })
+
+   table+="</tbody></table>";
+
+   $("#"+target).html(table);
+
+  
+}
+
 
 
 function writeTable(series,prop){

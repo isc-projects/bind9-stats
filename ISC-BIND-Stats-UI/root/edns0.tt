@@ -29,34 +29,38 @@
     </div>
 
 
-    <script type="text/javascript">
+          <script type="text/javascript">
 
-       // var dataSeries=[% series %];
+         // var dataSeries=[% series %];
 
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
-
-        var chart;
-        $(document).ready(function() {
-             $.ajax({
-                url: '/data/edns0',  
-                success: function(data){
-                  newData=data.series;
-          
-                  generateAreaGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"",
-                    target:"container"
-                  });
-
-                  }
-              });
+         var dataSeries=[];
+         var graphTitle="Traffic Across all Nodes";
 
 
-        });
+          var chart;
+          $(document).ready(function() {
 
-    </script>
+
+               $.ajax({
+                  url: '/data/edns0_daily',  
+                  success: function(data){
+                    newData=data.series;
+
+                   chart=generateZoomableStackedGraph({
+                      title:graphTitle,
+                      data:data.series,
+                      subtitle:"EDNS0",
+                      target:"container",
+                      type:"edns0"
+                    });
+
+                    }
+                });
+
+
+          });
+
+          </script>
 
 
 

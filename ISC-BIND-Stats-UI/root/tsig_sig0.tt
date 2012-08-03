@@ -29,34 +29,38 @@
     </div>
 
 
-    <script type="text/javascript">
+          <script type="text/javascript">
 
-       // var dataSeries=[% series %];
+         // var dataSeries=[% series %];
 
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
-
-        var chart;
-        $(document).ready(function() {
-             $.ajax({
-                url: '/data/tsig_sig0',  
-                success: function(data){
-                  newData=data.series;
-          
-                  generateAreaGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"",
-                    target:"container"
-                  });
-
-                  }
-              });
+         var dataSeries=[];
+         var graphTitle="Traffic Across all Nodes";
 
 
-        });
+          var chart;
+          $(document).ready(function() {
 
-    </script>
+
+               $.ajax({
+                  url: '/data/tsig_sig0_daily',  
+                  success: function(data){
+                    newData=data.series;
+
+                   chart=generateZoomableStackedGraph({
+                      title:graphTitle,
+                      data:data.series,
+                      subtitle:"TSIG and SIG0",
+                      target:"container",
+                      type:"tsig_sig0"
+                    });
+
+                    }
+                });
+
+
+          });
+
+          </script>
 
 
 

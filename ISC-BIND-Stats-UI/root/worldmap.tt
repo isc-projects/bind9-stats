@@ -8,24 +8,8 @@
 
 
     
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
+      <div id="locationTable"></div>
+   
 
 
 
@@ -49,6 +33,7 @@
                       
                       locationData=data.table;
                       drawMarkersMap(locationData);
+                      writeLocationTable(locationData,{target:"locationTable"});
                       
                       
                       }
@@ -82,6 +67,9 @@
             chart.draw(data, options);
           };
           </script>
+
+
+
 
 
 

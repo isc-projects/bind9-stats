@@ -30,41 +30,38 @@
 
 
 
-        <script type="text/javascript">
+           <script type="text/javascript">
 
-       // var dataSeries=[% series %];
+          // var dataSeries=[% series %];
 
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
-
-
-        var chart;
-        $(document).ready(function() {
-
-             $.ajax({
-                url: '/data/opcode',  
-                success: function(data){
-                  newData=data.series;
-                  
-                  generateStackedGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"",
-                    target:"container"
-                  });
-              
-                  }
-              });
+          var dataSeries=[];
+          var graphTitle="Traffic Across all Nodes";
 
 
+           var chart;
+           $(document).ready(function() {
 
 
+                $.ajax({
+                   url: '/data/opcode_daily',  
+                   success: function(data){
+                     newData=data.series;
 
-          
+                    chart=generateZoomableStackedGraph({
+                       title:graphTitle,
+                       data:data.series,
+                       subtitle:"Operational Ccodes",
+                       target:"container",
+                       type:"opcode"
+                     });
 
-        });
+                     }
+                 });
 
-        </script>
+
+           });
+
+           </script>
 
 
 

@@ -30,46 +30,39 @@
 
 
 
-        <script type="text/javascript">
+     
+      <script type="text/javascript">
 
-       // var dataSeries=[% series %];
+     // var dataSeries=[% series %];
 
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
-
-
-
+     var dataSeries=[];
+     var graphTitle="Traffic Across all Nodes";
 
 
-
-        var chart;
-        $(document).ready(function() {
-
-
-             $.ajax({
-                url: '/data/v6v4',  
-                success: function(data){
-                  newData=data.series;
-                  
-                  generateStackedGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"",
-                    target:"container"
-                  });
-              
-                  }
-              });
+      var chart;
+      $(document).ready(function() {
 
 
+           $.ajax({
+              url: '/data/v6v4_daily',  
+              success: function(data){
+                newData=data.series;
+                
+               chart=generateZoomableStackedGraph({
+                  title:graphTitle,
+                  data:data.series,
+                  subtitle:"IPv6 and IPv4 Traffic",
+                  target:"container",
+                  type:"v6v4"
+                });
+            
+                }
+            });
 
 
+      });
 
-          
-
-        });
-
-        </script>
+      </script>
 
 
 
