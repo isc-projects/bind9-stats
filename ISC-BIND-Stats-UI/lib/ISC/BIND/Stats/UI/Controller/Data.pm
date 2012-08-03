@@ -254,7 +254,60 @@ sub server : Local {
 
 }
 
+
 sub v6v4 : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+          wanted => { q{value.nsstat_qps} => 1 },
+          find   => {
+            q{_id.sample_time} => {
+              q{$gte} =>
+                DateTime->from_epoch( epoch => ( $now->epoch - ( 86400 * 7 ) ) )
+            }
+          },
+          collection  => q{server_stats_hourly},
+          dataset_sub => sub { return $_[0]->{value}->{nsstat_qps} },
+          plot_wanted => [qw(Requestv4 Requestv6)],
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+
+
+sub v6v4_daily : Local {
+  my ( $self, $c, $server ) = @_;
+  my $now = DateTime->now();
+
+  my $params = {
+          wanted => { q{value.nsstat_qps} => 1 },
+          find   => {
+            q{_id.sample_time} => {
+              q{$gte} =>
+                DateTime->from_epoch( epoch => ( $now->epoch - ( 86400 * 7 ) ) )
+            }
+          },
+          collection  => q{server_stats_hourly},
+          dataset_sub => sub { return $_[0]->{value}->{nsstat_qps} },
+          plot_wanted => [qw(Requestv4 Requestv6)],
+  };
+
+  if ($server) {
+    $c->log->debug( q{Setting server to: } . $server );
+    $params->{find}->{q{_id.pubservhost}} = $server;
+  }
+
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+}
+
+sub v6v4_hourly : Local {
   my ( $self, $c, $server ) = @_;
   my $now = DateTime->now();
 
