@@ -295,6 +295,9 @@ q{done (parsing: %.2f, processing: %.2f, inserting: %.2f, calc_delta: %.2f, zone
     $lookup_elapsed,
     scalar @processed
   );
+
+  print "OK $file\n";
+  
 }
 
 =item show_usage
@@ -454,7 +457,7 @@ sub log_msg {
   $template = sprintf( '[%s] %s', $sub || 'main', $template );
 
   if ( $level >= $config->{verbose} ) {
-    printf( qq{[bind_stats_import] %s\n}, sprintf( $template, @args ) );
+    printf( STDERR qq{[bind_stats_import] %s\n}, sprintf( $template, @args ) );
   }
   return;
 }
