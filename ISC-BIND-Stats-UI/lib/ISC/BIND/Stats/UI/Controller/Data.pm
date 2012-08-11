@@ -23,8 +23,10 @@ Catalyst Controller.
 =cut
 
 my $nf = Number::Format->new;
-my $g;
 my $config;
+
+# To store IATA locations
+my $location = {};
 
 sub begin : Private {
   my ( $self, $c ) = @_;
@@ -720,11 +722,25 @@ sub location_table : Local {
   my ( $self, $c, ) = @_;
   my $now = DateTime->now();
 
-  $g = Geo::IATA->new( $config->{geo_iata_db} );
-
   my $db = $c->model('BIND')->db;
   my $last_dataset =
     $db->datasets->find()->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
+
+  if ( scalar keys %{$location} == 0 ) {
+    my $loc_cur = $db->locations->find();
+
+    while ( $loc_cur->has_next ) {
+      my $loc = $loc_cur->next;
+
+      $location->{ lc $loc->{_id} } = [
+                    $loc->{value}->{geometry}->{location}->{lat},    # Latitude
+                    $loc->{value}->{geometry}->{location}->{lng},    # Longitude
+                    $loc->{value}->{formatted_address}               # name
+      ];
+
+    }
+
+  }
 
   my $params = {
     wanted      => { q{opcode_qps} => 1 },
@@ -734,14 +750,14 @@ sub location_table : Local {
     find    => { q{_id.sample_time} => $last_dataset->{_id}->{sample_time} },
     key_sub => sub {
       $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}).*?$};
-      return $g->iata2location($1);
+      return $1;
       }
   };
 
   my $data = $c->forward( 'get_from_traffic', [$params] );
-  my $series = [ [ 'Location', 'Percent (%)', 'Traffic (qps)' ] ];
+  my $series = [ [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)' ,'Name'] ];
 
-  #$c->log->debug( Dumper($data) );
+  $c->log->debug( Dumper($data) );
 
   # Pull the max value from the series that we want:
 
@@ -753,17 +769,18 @@ sub location_table : Local {
   }
 
   map {
-    push @{$series},
-      [
-        $_->{name},
-        sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
-        $_->{data}->[-1]->[-1] * 1
+    push @{$series}, [
+      $location->{ $_->{name} }->[0],    # Latitude
+      $location->{ $_->{name} }->[1],    # Longitude
+      sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
+      $_->{data}->[-1]->[-1] * 1,
+      $location->{ $_->{name} }->[2]     # name
       ]
   } @{ $data->{series} };
 
   $c->stash->{data} = {
-                        table       => $series,
-                        sample_time => $last_dataset->{_id}->{sample_time} * 1000
+                       table       => $series,
+                       sample_time => $last_dataset->{_id}->{sample_time} * 1000
   };
 
 }
