@@ -245,6 +245,7 @@ function generateZoomableStackedGraph(prop){
 }
 
 
+
 function writeLocationTable(series,prop){
   target=prop.target;
   var table="<table class=\"table table-striped table-condensed table-bordered\"><thead><tr>";
@@ -287,6 +288,8 @@ function writeLocationTable(series,prop){
 
        table+="</td><td>" + row[1] + "</td>"
        table+="<td>" + row[2] + "</td>";
+       table+="<td>" + row[3] + "</td>";
+       
        table+="</tr>";
        
    })

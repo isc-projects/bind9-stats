@@ -7,26 +7,8 @@
       </div>
 
 
+      <div id="siteTable"></div>
     
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
-
 
 
         <script type="text/javascript">
@@ -45,6 +27,9 @@
                 url: '/data/site_daily',  
                 success: function(data){
                   newData=data.series;
+                  
+                  
+                  writeTable(data.series,{target:"siteTable",detail_url:'/site_detail'});
                   
                   
                  chart=generateZoomableStackedGraph({

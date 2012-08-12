@@ -9,24 +9,7 @@
 
 
     
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
+      <div id="qtypeTable"></div>
 
 
 
@@ -46,6 +29,9 @@
                   url: '/data/rdtype_daily',  
                   success: function(data){
                     newData=data.series;
+
+                    writeTable(data.series,{target:"qtypeTable",detail_url:''});
+
 
                    chart=generateZoomableStackedGraph({
                       title:graphTitle,

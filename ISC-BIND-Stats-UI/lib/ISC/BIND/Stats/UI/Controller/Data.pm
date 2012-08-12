@@ -755,7 +755,8 @@ sub location_table : Local {
   };
 
   my $data = $c->forward( 'get_from_traffic', [$params] );
-  my $series = [ [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)' ,'Name'] ];
+  my $series =
+    [ [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)', 'Name','IATA'] ];
 
   $c->log->debug( Dumper($data) );
 
@@ -774,7 +775,8 @@ sub location_table : Local {
       $location->{ $_->{name} }->[1],    # Longitude
       sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
       $_->{data}->[-1]->[-1] * 1,
-      $location->{ $_->{name} }->[2]     # name
+      $location->{ $_->{name} }->[2],    # name
+      $_->{name}                         # IATA code
       ]
   } @{ $data->{series} };
 
