@@ -222,15 +222,27 @@ sub site_daily : Local {
   my ( $self, $c, $server ) = @_;
 
   my $params = {
-    wanted  => { q{value.qps} => 1 },
-    find    => {},
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+    wanted     => { q{value.opcode_qps} => 1 },
+    collection => q{server_stats_daily},
+    dataset_sub => sub { return $_[0]->{value}->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
-    },
-    dataset_sub => sub { return $_[0]->{value}->{qps} },
-    collection  => q{rescode_traffic_daily}
+      }
   };
+
+  # my $params = {
+  #    wanted  => { q{value.qps} => 1 },
+  #    find    => {},
+  #    key_sub => sub {
+  #      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
+  #      return $1;
+  #    },
+  #    dataset_sub => sub { return $_[0]->{value}->{qps} },
+  #    collection  => q{rescode_traffic_daily}
+  #  };
 
   if ($server) {
     $c->log->debug( q{Setting server to: } . $server );
@@ -722,9 +734,11 @@ sub location_table : Local {
   my ( $self, $c, ) = @_;
   my $now = DateTime->now();
 
-  my $db = $c->model('BIND')->db;
+  my $db               = $c->model('BIND')->db;
+  my $last_dataset_cur = $db->datasets->find();
+  $last_dataset_cur->slave_okay(1);
   my $last_dataset =
-    $db->datasets->find()->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
+    $last_dataset_cur->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
 
   if ( scalar keys %{$location} == 0 ) {
     my $loc_cur = $db->locations->find();
@@ -756,7 +770,9 @@ sub location_table : Local {
 
   my $data = $c->forward( 'get_from_traffic', [$params] );
   my $series =
-    [ [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)', 'Name','IATA'] ];
+    [
+     [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)', 'Name', 'IATA' ]
+    ];
 
   $c->log->debug( Dumper($data) );
 
@@ -781,8 +797,8 @@ sub location_table : Local {
   } @{ $data->{series} };
 
   $c->stash->{data} = {
-                       table       => $series,
-                       sample_time => $last_dataset->{_id}->{sample_time} * 1000
+                        table       => $series,
+                        sample_time => $last_dataset->{_id}->{sample_time}
   };
 
 }
@@ -846,6 +862,10 @@ sub get_from_traffic : Private {
 
   my $traffic_cursor = $db->$collection->find( $args->{find}, $args->{wanted} );
 
+  # Allow us to read from slave
+
+  $traffic_cursor->slave_okay(1);
+
   if ( $args->{order} ) {
     $traffic_cursor->sort( $args->{order} );
   }
@@ -898,7 +918,7 @@ sub get_from_traffic : Private {
         }
       }
       else {
-        $c->log->debug('using qps counters...');
+        $c->log->debug('WARNING: using qps counters...');
         $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
       }
     }

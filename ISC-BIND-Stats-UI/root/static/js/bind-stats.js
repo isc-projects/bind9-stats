@@ -265,8 +265,8 @@ function writeLocationTable(series,prop){
    data.shift();
 
    data.sort(function(a,b){
-     var data_a=a[2];
-     var data_b=b[2];
+     var data_a=a[3];
+     var data_b=b[3];
 
      return data_b - data_a;
    });

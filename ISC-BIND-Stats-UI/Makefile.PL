@@ -14,7 +14,6 @@ requires 'Catalyst::Plugin::ConfigLoader';
 requires 'Catalyst::Plugin::Static::Simple';
 requires 'Catalyst::Action::RenderView';
 requires 'Moose';
-requires 'Geo::IATA';
 
 requires 'namespace::autoclean';
 requires 'Config::General'; # This should reflect the config file format you've chosen
