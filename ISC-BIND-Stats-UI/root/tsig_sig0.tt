@@ -8,60 +8,36 @@
       </div>
 
 
-    
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
+        <div id="summaryTable"></div>
 
 
-          <script type="text/javascript">
-
-         // var dataSeries=[% series %];
-
-         var dataSeries=[];
-         var graphTitle="Traffic Across all Nodes";
 
 
-          var chart;
-          $(document).ready(function() {
+
+        <script type="text/javascript">
 
 
-               $.ajax({
-                  url: '/data/tsig_sig0_daily',  
-                  success: function(data){
-                    newData=data.series;
+           var prop={
+             "resolution":"daily",
+             "type":"tsig_sig0",
+             "detail_url":"",
+             "table_target":"summaryTable",
+             "graph_target":"container",
+             "subtitle":"Received Queries Rate",
+             "title":"TSIG and SIG0 Traffic"
+           };
 
-                   chart=generateZoomableStackedGraph({
-                      title:graphTitle,
-                      data:data.series,
-                      subtitle:"TSIG and SIG0",
-                      target:"container",
-                      type:"tsig_sig0"
-                    });
-
-                    }
-                });
+            var chart;
+            $(document).ready(function() {
+              getData(prop);
+            });
 
 
-          });
+        </script>
+  
 
-          </script>
 
+       
 
 
 

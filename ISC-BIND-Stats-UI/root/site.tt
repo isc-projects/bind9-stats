@@ -13,38 +13,24 @@
 
         <script type="text/javascript">
 
-       // var dataSeries=[% series %];
-
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
-
+       var prop={
+         "resolution":"daily",
+         "type":"site",
+         "detail_url":"/site_detail",
+         "table_target":"siteTable",
+         "graph_target":"container",
+         "subtitle":"Received Queries Rate",
+         "title":"Traffic across all Locations"
+       };
 
         var chart;
         $(document).ready(function() {
-
-
-             $.ajax({
-                url: '/data/site_daily',  
-                success: function(data){
-                  newData=data.series;
-                  
-                  
-                  writeTable(data.series,{target:"siteTable",detail_url:'/site_detail'});
-                  
-                  
-                 chart=generateZoomableStackedGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"This is the Subtitle",
-                    target:"container",
-                    type:"site"
-                  });
-              
-                  }
-              });
-
-
+          getData(prop);
         });
+        
+        
+      
+        
 
         </script>
 

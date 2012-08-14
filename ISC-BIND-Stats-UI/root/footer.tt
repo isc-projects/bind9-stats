@@ -61,6 +61,20 @@
       chart.redraw();
    });
    
+   
+   
+   $("#showLatest").click(function(){
+     prop.resolution="";
+     prop.subtitle="Last two hours";
+     chart.showLoading("Fetching latest data set...");
+     
+     console.log('loading new data...');
+     
+     getData(prop);
+     
+   });
+   
+   
   
    
    

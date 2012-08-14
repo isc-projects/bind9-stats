@@ -1,12 +1,22 @@
-<div style="width:100%;height:300px" id="container"></div>
+<div style="width:100%;height:300px" id="container">
+    <div class="progress progress-striped active">
+      <div class="bar" style="width: 100%;"></div>
+    </div> 
+    <h2>Loading Data <small>please wait...</small></h2>
+</div>
  
  
  <div class="row">
   
-  <div class="span2">
+  <div class="span4">
   <button id="seriesOff" class="btn btn-mini"><i class="icon-minus"></i></button>
   <button id="seriesOn" class="btn btn-mini btn-primary"><i class="icon-plus icon-white"></i></button>
+  <button id="showLatest" class="btn btn-mini btn-primary"><i class="icon-fire icon-white"></i> Show Latest Detail</button>
+ 
   </div>
+  
+ 
+    
   
   <!--
   <div class="span4 offset2">

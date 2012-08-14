@@ -11,41 +11,24 @@
     
       <div id="qtypeTable"></div>
 
-
-
           <script type="text/javascript">
 
-         // var dataSeries=[% series %];
+             var prop={
+               "resolution":"daily",
+               "type":"rdtype",
+               "detail_url":"",
+               "table_target":"qtypeTable",
+               "graph_target":"container",
+               "subtitle":"Received Queries Rate",
+               "title":"QTYPEs"
+             };
 
-         var dataSeries=[];
-         var graphTitle="Traffic Across all Nodes";
-
-
-          var chart;
-          $(document).ready(function() {
-
-
-               $.ajax({
-                  url: '/data/rdtype_daily',  
-                  success: function(data){
-                    newData=data.series;
-
-                    writeTable(data.series,{target:"qtypeTable",detail_url:''});
+              var chart;
+              $(document).ready(function() {
+                getData(prop);
+              });
 
 
-                   chart=generateZoomableStackedGraph({
-                      title:graphTitle,
-                      data:data.series,
-                      subtitle:"Query Types",
-                      target:"container",
-                      type:"rdtype"
-                    });
-
-                    }
-                });
-
-
-          });
 
           </script>
 

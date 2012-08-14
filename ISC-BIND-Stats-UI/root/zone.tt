@@ -13,34 +13,25 @@
 
         <script type="text/javascript">
 
-       // var dataSeries=[% series %];
+        // var zones="[% zones.join('/') %]";
+       // url: '/data/zone/' + zones,  
 
-       var dataSeries=[];
-       var graphTitle="Traffic Across all Nodes";
 
-       var zones="[% zones.join('/') %]";
+       var prop={
+         "resolution":"",
+         "type":"zone",
+         "detail_url":"/zone_detail",
+         "table_target":"summary_table",
+         "graph_target":"container",
+         "subtitle":"Received Queries Rate",
+         "title":"Zones"
+       };
 
         var chart;
         $(document).ready(function() {
-
-             $.ajax({
-                url: '/data/zone/' + zones,  
-                success: function(data){
-                  newData=data.series;
-                  
-                  generateStackedGraph({
-                    title:graphTitle,
-                    data:data.series,
-                    subtitle:"",
-                    target:"container"
-                  });
-                  
-                  writeTable(data.series,{target:"summary_table",detail_url:'/zone_detail'});
-                    
-                  }
-              });
-
+          getData(prop);
         });
+
 
         </script>
 

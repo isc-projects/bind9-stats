@@ -46,7 +46,7 @@ sub site : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'site';
   $c->stash->{page_title}='Site Traffic';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
   $c->stash->{info_message}=q{This graph has 'zoom-in' features, please select a region and the graph
   will be zoomed in.. If the range is within a week, it will trigger an 'hourly' resolution. If the
   range is within a day, it will show a 5 minute intervals.
@@ -65,7 +65,7 @@ sub zone : Local {
   my ( $self, $c,@args ) = @_;
   $c->stash->{page} = 'zone';
   $c->stash->{page_title}='Zone Traffic';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
   
   if(scalar @args){
     $c->stash->{zones}=\@args;
@@ -86,7 +86,7 @@ sub zone_detail : Local {
   
   $c->stash->{page} = 'zone_detail';
   $c->stash->{page_title}='Zone Detail';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
   
 
   
@@ -106,7 +106,7 @@ sub v6v4 : Local {
 
   $c->stash->{page} = 'v6v4';
   $c->stash->{page_title}='IPv6 and IPv4 Traffic';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
 }
 
 
@@ -121,7 +121,7 @@ sub tsig_sig0 : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'tsig_sig0';
   $c->stash->{page_title}='TSIG and SIG0 Traffic';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
 
 }
 
@@ -136,7 +136,7 @@ sub rdtype : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'rdtype';
   $c->stash->{page_title}='Query Types Received';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
 }
 
 =head2 edns0
@@ -149,7 +149,7 @@ sub edns0 : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'edns0';
   $c->stash->{page_title}='DNS Extensions';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
 
 }
 
@@ -163,7 +163,7 @@ sub opcode : Local {
   my ( $self, $c ) = @_;
   $c->stash->{page} = 'opcode';
   $c->stash->{page_title}='Operational Codes';
-  $c->stash->{page_subtitle}='from data collected during the last five (5) minutes';
+  $c->stash->{page_subtitle}='from averages collected every five minutes';
 }
 
 =head2 default

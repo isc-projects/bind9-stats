@@ -9,58 +9,33 @@
 
 
     
-    <div class="row-fluid">
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-    
-      <div class="span4">
-        <h3>This is a test</h3>
-        This is text
-      </div>
-
-    </div>
+      <div id="summaryTable"></div>
 
 
-          <script type="text/javascript">
 
-         // var dataSeries=[% series %];
 
-         var dataSeries=[];
-         var graphTitle="Traffic Across all Nodes";
 
+      <script type="text/javascript">
+
+
+         var prop={
+           "resolution":"daily",
+           "type":"edns0",
+           "detail_url":"",
+           "table_target":"summaryTable",
+           "graph_target":"container",
+           "subtitle":"Received Queries Rate",
+           "title":"EDNS0 Traffic"
+         };
 
           var chart;
           $(document).ready(function() {
-
-
-               $.ajax({
-                  url: '/data/edns0_daily',  
-                  success: function(data){
-                    newData=data.series;
-
-                   chart=generateZoomableStackedGraph({
-                      title:graphTitle,
-                      data:data.series,
-                      subtitle:"EDNS0",
-                      target:"container",
-                      type:"edns0"
-                    });
-
-                    }
-                });
-
-
+            getData(prop);
           });
 
-          </script>
+
+      </script>
+
 
 
 
