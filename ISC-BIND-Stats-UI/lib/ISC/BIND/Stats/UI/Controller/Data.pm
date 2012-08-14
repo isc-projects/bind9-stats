@@ -139,16 +139,32 @@ sub site : Local {
   if ( $from && $to ) {
     ( $from, $to ) = map { sprintf( q{%d}, $_ ) * 1 } $from, $to;
   }
+
+
   my $params = {
-    wanted  => { qps => 1 },
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~
-        m{(\w{3}\d{1}).*?$};    # use the pubservhost name but
-                                # use only the first three leters
-                                # that identify the site name
+    wanted     => { q{opcode_qps} => 1 },
+    collection => q{server_stats},
+    dataset_sub => sub { return $_[0]->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
       }
   };
+
+
+
+#  my $params = {
+#    wanted  => { qps => 1 },
+#    key_sub => sub {
+#      $_[0]->{_id}->{pubservhost} =~
+#        m{(\w{3}\d{1}).*?$};    # use the pubservhost name but
+#                                # use only the first three leters
+#                                # that identify the site name
+#      return $1;
+#      }
+#  };
 
   if ( $from && $to ) {
     $params->{find} = {
@@ -186,14 +202,27 @@ sub site_hourly : Local {
   }
 
   my $params = {
-    wanted  => { q{value.qps} => 1 },
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+    wanted     => { q{value.opcode_qps} => 1 },
+    collection => q{server_stats_hourly},
+    dataset_sub => sub { return $_[0]->{value}->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
-    },
-    dataset_sub => sub { return $_[0]->{value}->{qps} },
-    collection  => q{rescode_traffic_hourly}
+      }
   };
+
+
+#  my $params = {
+#    wanted  => { q{value.qps} => 1 },
+#    key_sub => sub {
+#      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+#      return $1;
+#    },
+#    dataset_sub => sub { return $_[0]->{value}->{qps} },
+#    collection  => q{rescode_traffic_hourly}
+#  };
 
   if ( $from && $to ) {
     $params->{find} = {
