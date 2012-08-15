@@ -5,24 +5,8 @@
         <p>[% site_copyright %]</p>
       </footer>
 
-    </div> <!-- /container -->
+    </div> 
 
-    <!-- Le javascript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
- 
-    <script src="/static/assets/js/bootstrap-alert.js"></script>
-    <script src="/static/assets/js/bootstrap-tooltip.js"></script>
-    <script src="/static/assets/js/bootstrap-popover.js"></script>
-    <script src="/static/assets/js/bootstrap-transition.js"></script>
-    <script src="/static/assets/js/bootstrap-modal.js"></script>
-    <script src="/static/assets/js/bootstrap-dropdown.js"></script>
-    <script src="/static/assets/js/bootstrap-scrollspy.js"></script>
-    <script src="/static/assets/js/bootstrap-tab.js"></script>
-    <script src="/static/assets/js/bootstrap-button.js"></script>
-    <script src="/static/assets/js/bootstrap-collapse.js"></script>
-    <script src="/static/assets/js/bootstrap-carousel.js"></script>
-    <script src="/static/assets/js/bootstrap-typeahead.js"></script>
 
 
 <script type="text/javascript">
@@ -30,52 +14,6 @@
    
    // This is to enable alerts close button
    $(".alert").alert();
-   
-    //This enables popover for hide series
-    $("#seriesOn").popover({
-      title:"View All Series",
-      content:"Enables all the series in the graph"});
-
-    $("#seriesOff").popover({
-       title:"Hide All Series",
-       content:"Disables all the series in the graph",
-       placement:"top"
-    });
-   
-   $("#seriesOn").click(function(){
-     chart.ignoreHiddenSeries=true;
-      var series=chart.series;
-      series.forEach(function(e){
-            e.show();       
-      });
-      chart.redraw();
-   });
-   
-   
-   $("#seriesOff").click(function(){
-     chart.ignoreHiddenSeries=true;
-      var series=chart.series;
-      series.forEach(function(e){
-            e.hide();       
-      });
-      chart.redraw();
-   });
-   
-   
-   
-   $("#showLatest").click(function(){
-     prop.resolution="";
-     prop.subtitle="Last two hours";
-     chart.showLoading("Fetching latest data set...");
-     
-     console.log('loading new data...');
-     
-     getData(prop);
-     
-   });
-   
-   
-  
    
    
 });

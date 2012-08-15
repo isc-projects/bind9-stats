@@ -1,4 +1,4 @@
-<div style="width:100%;height:300px" id="container">
+<div style="width:100%;height:300px" id="[% custom_name %]container">
     <div class="progress progress-striped active">
       <div class="bar" style="width: 100%;"></div>
     </div> 
@@ -9,15 +9,17 @@
  <div class="row">
   
   <div class="span4">
-  <button id="seriesOff" class="btn btn-mini"><i class="icon-minus"></i></button>
-  <button id="seriesOn" class="btn btn-mini btn-primary"><i class="icon-plus icon-white"></i></button>
-  <button id="showLatest" class="btn btn-mini btn-primary"><i class="icon-fire icon-white"></i> Show Latest Detail</button>
+    
+  
+    <button id="[% custom_name %]seriesOff" class="btn btn-mini"><i class="icon-minus"></i></button>
+    <button id="[% custom_name %]seriesOn" class="btn btn-mini btn-primary"><i class="icon-plus icon-white"></i></button>
+    <button id="[% custom_name %]showLatest" class="btn btn-mini btn-primary"><i class="icon-fire icon-white"></i> Show Latest Detail</button>
+  
+ 
  
   </div>
   
  
-    
-  
   <!--
   <div class="span4 offset2">
     <p>Total traffic at top of last hour: <strong>[% traffic_count %] qps</strong>.</p>
@@ -25,3 +27,49 @@
 
   -->
   </div>
+
+<script type="text/javascript">
+ 
+   //This enables popover for hide series
+   $("#[% custom_name %]seriesOn").popover({
+     title:"View All Series",
+     content:"Enables all the series in the graph"});
+
+   $("#[% custom_name %]seriesOff").popover({
+      title:"Hide All Series",
+      content:"Disables all the series in the graph",
+      placement:"top"
+   });
+  
+  $("#[% custom_name %]seriesOn").click(function(){
+    chart.ignoreHiddenSeries=true;
+     var series=chart.series;
+     series.forEach(function(e){
+           e.show();       
+     });
+     chart.redraw();
+  });
+  
+  
+  $("#[% custom_name %]seriesOff").click(function(){
+    chart.ignoreHiddenSeries=true;
+     var series=chart.series;
+     series.forEach(function(e){
+           e.hide();       
+     });
+     chart.redraw();
+  });
+  
+  
+  
+  $("#[% custom_name %]showLatest").click(function(){
+    prop.resolution="";
+    prop.subtitle="Last two hours";
+    chart.showLoading("Fetching latest data set...");
+    
+    console.log('loading new data...');
+    
+    getData(prop);
+    
+  });
+</script>

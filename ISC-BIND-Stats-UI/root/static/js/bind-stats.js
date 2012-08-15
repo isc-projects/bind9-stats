@@ -7,16 +7,24 @@ function getData(prop) {
     data_url += "_" + prop.resolution;
   }
 
+  if(prop.extra_args){
+    data_url += "/" + prop.extra_args;
+  }
+
   $.ajax({
     url: data_url,
     success: function(data) {
       newData = data.series;
 
-      console.log("Writing data table...");
-      writeTable(data.series, {
-        target: prop.table_target,
-        detail_url: prop.detail_url
-      });
+
+      // Only write the table if the table_target param is set
+      if(prop.table_target){
+        console.log("Writing data table...");
+        writeTable(data.series, {
+          target: prop.table_target,
+          detail_url: prop.detail_url
+        });
+      }
 
 
       var chartData = [];
@@ -57,7 +65,8 @@ function getData(prop) {
         data: chartData,
         subtitle: prop.subtitle,
         target: prop.graph_target,
-        type: prop.type
+        type: prop.type,
+        extra_args: prop.extra_args
       });
 
 
@@ -147,6 +156,8 @@ function generateZoomableStackedGraph(prop) {
         events: {
           selection: function selectChartRange(event) {
             var chart = this;
+            
+            console.log("Properties: " + JSON.stringify(prop));
 
             oldDataSeries = chart.data;
 
@@ -164,6 +175,7 @@ function generateZoomableStackedGraph(prop) {
               //perform a query to the server
               var range = event.xAxis[0].max - event.xAxis[0].min;
               var url = "/data/" + prop.type;
+            
               console.log("RANGE IS: " + range);
               if (range <= 86400000) {
 
@@ -212,13 +224,17 @@ function generateZoomableStackedGraph(prop) {
 
               }
 
-
+                if (prop.extra_args){
+                  console.log("adding extra args...");
+                  url += "/" + prop.extra_args;
+                  console.log("URL to be fetched: " + url);
+                }
 
               var newData;
               $.ajax({
                 url: url + "?from=" + event.xAxis[0].min + "&to=" + event.xAxis[0].max,
                 success: function(data) {
-                  // console.log("data received: ",JSON.stringify(data));
+                  console.log("data received: ",JSON.stringify(data));
                   newData = data.series;
                   replaceData(newData, chart);
 
@@ -233,8 +249,19 @@ function generateZoomableStackedGraph(prop) {
             } else {
               console.log("Restoring original chart");
               var newData;
+              
+              var url="/data/" + prop.type + "_daily";
+              
+              if (prop.extra_args){
+                    console.log("adding extra args...");
+                    url += "/" + prop.extra_args;
+                    console.log("URL to be fetched: " + url);
+              }
+              
+              
+              
               $.ajax({
-                url: "/data/" + prop.type + "_daily",
+                url: url,
                 success: function(data) {
                   //  console.log("data received: ",JSON.stringify(data));
                   newData = data.series;

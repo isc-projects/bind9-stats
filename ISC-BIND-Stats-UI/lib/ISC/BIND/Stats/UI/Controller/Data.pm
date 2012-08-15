@@ -25,7 +25,7 @@ Catalyst Controller.
 my $nf = Number::Format->new;
 my $config;
 
-# To store IATA locations
+# To store locations
 my $location = {};
 
 sub begin : Private {
@@ -308,7 +308,7 @@ sub server : Local {
 }
 
 sub v6v4 : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -342,11 +342,28 @@ sub v6v4 : Local {
     };
   }
 
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats};
+    $params->{dataset_sub} = sub { return $_[0]->{nsstat_qps} };
+    $params->{wanted} = { nsstat_qps => 1 };
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$gte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$gte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$gte}}->epoch * 1000;
+    }
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$lte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$lte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$lte}}->epoch * 1000;
+    }
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub v6v4_daily : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
 
   my $params = {
                  wanted     => { q{value.nsstat_qps} => 1 },
@@ -355,11 +372,20 @@ sub v6v4_daily : Local {
                  plot_wanted => [qw(Requestv4 Requestv6)],
   };
 
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats_daily};
+    $params->{dataset_sub} = sub { return $_[0]->{value}->{nsstat_qps} };
+    $params->{wanted} = { q{value.nsstat_qps} => 1 };
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub v6v4_hourly : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -390,6 +416,18 @@ sub v6v4_hourly : Local {
     $params->{find} =
       { q{_id.sample_time} =>
         { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
+  }
+
+  if ($site) {
+    if ($site) {
+      $c->log->debug( 'Looking for site:' . $site );
+      my $pattern = qr{^$site};
+      $params->{find}->{q{_id.pubservhost}} = $pattern;
+      $params->{collection} = q{server_stats_hourly};
+      $params->{dataset_sub} = sub { return $_[0]->{value}->{nsstat_qps} };
+      $params->{wanted} = { q{value.nsstat_qps} => 1 };
+    }
+
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
@@ -943,7 +981,7 @@ sub get_from_traffic : Private {
 
     my $dataset = $dataset_sub->($data);
 
-    $c->log->debug( 'Dataset used: ' . Dumper($dataset) );
+    #$c->log->debug( 'Dataset used: ' . Dumper($dataset) );
 
     while ( my ( $k, $v ) = each %{$dataset} ) {
 

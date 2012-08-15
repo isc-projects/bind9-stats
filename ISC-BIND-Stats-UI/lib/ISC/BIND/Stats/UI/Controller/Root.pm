@@ -55,6 +55,29 @@ sub site : Local {
 
 
 
+=head2 site_detail
+
+Detail on a site
+
+=cut
+
+sub site_detail : Local {
+  my ($self,$c,$site)=@_;
+  
+  if(! $site ){
+    $c->stash->{error_message}='Unknown site';
+    $c->detach('site');
+  }
+  
+  $c->stash->{page} = 'site_detail';
+  $c->stash->{page_title} = sprintf('Site Detail for %s',$site);
+  
+  $c->stash->{site_name}=$site;
+  
+}
+
+
+
 =head2 zone 
 
 Provides a page to see the data on a per-zone basis 
