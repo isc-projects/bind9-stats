@@ -1,4 +1,4 @@
-<div style="width:100%;height:300px" id="[% custom_name %]container">
+<div style="width:100%;height:400px" id="[% custom_name %]container">
     <div class="progress progress-striped active">
       <div class="bar" style="width: 100%;"></div>
     </div> 
@@ -9,14 +9,10 @@
  <div class="row">
   
   <div class="span4">
-    
-  
     <button id="[% custom_name %]seriesOff" class="btn btn-mini"><i class="icon-minus"></i></button>
     <button id="[% custom_name %]seriesOn" class="btn btn-mini btn-primary"><i class="icon-plus icon-white"></i></button>
-    <button id="[% custom_name %]showLatest" class="btn btn-mini btn-primary"><i class="icon-fire icon-white"></i> Show Latest Detail</button>
-  
- 
- 
+    <button id="[% custom_name %]reload" class="btn btn-mini btn-primary"><i class="icon-repeat icon-white"></i> Reload</button>
+    <button id="[% custom_name %]showLatest" class="btn btn-mini btn-primary"><i class="icon-fire icon-white"></i> Show Latest</button>
   </div>
   
  
@@ -60,7 +56,16 @@
      chart.redraw();
   });
   
-  
+  $("#[% custom_name %]reload").click(function(){
+     prop.resolution="daily";
+     prop.subtitle="Received Queries Rate";
+     chart.showLoading("Reloading Chart...");
+
+     console.log('loading new data...');
+
+     getData(prop);
+
+   });
   
   $("#[% custom_name %]showLatest").click(function(){
     prop.resolution="";

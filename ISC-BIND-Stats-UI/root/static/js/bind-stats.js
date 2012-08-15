@@ -1,7 +1,46 @@
 var oldDataSeries = [];
 var dataSeries = [];
 
+
+/*
+* getData(prop)
+*
+* Description: this is a wrapper that receives a of properties
+* to construct a chart and an optional table.
+*
+* Arguments:
+* {
+*   "type": type of request (rdtype, zone, site, etc.) 
+*           must match a /data/type AJAX request
+*
+*   "resolution": daily, hourly or '' (5min).
+*
+*   "extra_args": used to pass as an argument to the URL
+*                 i.e.: /data/rdtype/extra_args
+*                 this was created to pass the current
+*                 detail to the AJAX URL.
+*
+*   "detail_url": when constructing a table, this url is
+*                 used to provide additional detail to
+*                 the key element.
+*
+*   "table_target": id of the <div> to be used to write
+*                   the table to.
+*
+*   "graph_target": id of the <div> to be used to write
+*                  the chart to.
+*
+*   "title": Title of the chart to be generated.
+*
+*   "subtitle": Subtitle of the chart.
+* }
+*
+*/
 function getData(prop) {
+  
+  console.log('getData() for ' + prop.type);
+  prop.isLoaded=true;
+  
   var data_url = "/data/" + prop.type;
   if (prop.resolution) {
     data_url += "_" + prop.resolution;
@@ -16,7 +55,6 @@ function getData(prop) {
     success: function(data) {
       newData = data.series;
 
-
       // Only write the table if the table_target param is set
       if(prop.table_target){
         console.log("Writing data table...");
@@ -25,7 +63,6 @@ function getData(prop) {
           detail_url: prop.detail_url
         });
       }
-
 
       var chartData = [];
       var otherData = {
@@ -69,76 +106,16 @@ function getData(prop) {
         extra_args: prop.extra_args
       });
 
-
       if (chart) {
         chart.hideLoading();
       }
 
-
       console.log("All Done!");
-
-
     }
   });
 
 
 }
-
-
-function generateStackedGraph(prop) {
-
-  chart = new Highcharts.Chart({
-    chart: {
-      renderTo: prop.target,
-      type: 'area',
-      zoomType: 'x'
-    },
-    title: {
-      text: prop.title
-    },
-    subtitle: {
-      text: prop.subtitle
-    },
-    xAxis: {
-      type: 'datetime',
-      maxZoom: 1 * 3600000,
-      // 1 hour
-      dateTimeLabelFormats: { // don't display the dummy year
-        month: '%b %e',
-        year: '%Y'
-      }
-    },
-    yAxis: {
-      title: {
-        text: 'Queries per Second (qps)'
-      },
-      min: 0
-    },
-    tooltip: {
-      formatter: function() {
-        return '<b>' + this.series.name + '</b><br/>' + Highcharts.dateFormat('%b %e %Y @ %H:%M', this.x) + ' > ' + this.y + ' qps';
-      }
-    },
-    plotOptions: {
-      area: {
-        stacking: "normal"
-      },
-      series: {
-        marker: {
-          enabled: false,
-          states: {
-            hover: {
-              enabled: true,
-              radius: 5
-            }
-          }
-        }
-      }
-    },
-    series: prop.data
-  });
-}
-
 
 
 var currentResolution = "day";
@@ -385,7 +362,17 @@ function writeLocationTable(series, prop) {
 
 }
 
-
+/* 
+* writeTable(series,prop)
+*
+* arguments: series: [[key,val1,val2,...],[key,val1,val2,...]]
+* 
+*            prop: {
+*                target: where to write the table to
+*                detail_url: where to link to for additional detail on the key
+*               }
+*
+*/
 
 function writeTable(series, prop) {
 
@@ -443,6 +430,13 @@ function writeTable(series, prop) {
 }
 
 
+/*
+* replaceData(newData,chart)
+* 
+* Description: receives a new data series and replaces the 
+* one currently being displayed in chart.
+*
+*/
 
 function replaceData(newData, chart) {
 
@@ -456,57 +450,3 @@ function replaceData(newData, chart) {
   });
 }
 
-
-
-
-
-function generateAreaGraph(prop) {
-
-  chart = new Highcharts.Chart({
-    chart: {
-      renderTo: prop.target,
-      type: 'area',
-      zoomType: 'x'
-    },
-    title: {
-      text: prop.title
-    },
-    subtitle: {
-      text: prop.subtitle
-    },
-    xAxis: {
-      type: 'datetime',
-      maxZoom: 1 * 3600000,
-      // 1 hour
-      dateTimeLabelFormats: { // don't display the dummy year
-        month: '%b %e',
-        year: '%Y'
-      }
-    },
-    yAxis: {
-      title: {
-        text: 'Queries per Second (qps)'
-      },
-    },
-    tooltip: {
-      formatter: function() {
-        return '<b>' + this.series.name + '</b><br/>' + Highcharts.dateFormat('%b %e %Y @ %H:%M', this.x) + ' > ' + this.y + ' qps';
-      }
-    },
-    plotOptions: {
-
-      series: {
-        marker: {
-          enabled: false,
-          states: {
-            hover: {
-              enabled: true,
-              radius: 5
-            }
-          }
-        }
-      }
-    },
-    series: prop.data
-  });
-}

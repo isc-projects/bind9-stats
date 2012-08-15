@@ -5,7 +5,7 @@
   <ul class="nav nav-tabs">
     <li class="active"><a href="#tab1" data-toggle="tab">Traffic</a></li>
     <li><a href="#tab2" id="tabIP" data-toggle="tab">IPv4/IPv6</a></li>
-    <li><a href="#tab3" data-toggle="tab">Query Types</a></li>
+    <li><a href="#tab3" id="tabRdType" data-toggle="tab">Query Types</a></li>
     <li><a href="#tab4" data-toggle="tab">Zone Traffic</a></li>
     
     
@@ -13,14 +13,15 @@
   <div class="tab-content">
     <div class="tab-pane active" id="tab1">
        
-       <div class="alert">
-         <button class="close" data-dismiss="alert">×</button>
-         <strong>Warning!</strong> Not implemented yet!.
-       </div>
+       
+      <div id="map_div" style="width: 60%; height: 400px"></div>          
+       
+      [% INCLUDE "map.tt" %]
+      
         
       </div>
       <div class="tab-pane" id="tab2">
-        [% custom_name = 'v4v6' %]
+        [% custom_name = 'v6v4' %]
         
         <script type="text/javascript">
          var v4v6_prop={
@@ -29,7 +30,7 @@
            "extra_args":"[% site_name %]",
            "detail_url":"",
            "table_target":"",
-           "graph_target":"v4v6container",
+           "graph_target":"v6v4container",
            "subtitle":"Received Queries Rate",
            "title":"IPv4 and IPv6 Traffic"
          };
@@ -41,10 +42,26 @@
         
       </div>
       <div class="tab-pane" id="tab3">
-         <div class="alert">
-           <button class="close" data-dismiss="alert">×</button>
-           <strong>Warning!</strong> Not implemented yet!.
-         </div>
+         
+          [% custom_name = 'rdtype' %]
+
+           <script type="text/javascript">
+            var rdtype_prop={
+              "resolution":"daily",
+              "type":"rdtype",
+              "extra_args":"[% site_name %]",
+              "detail_url":"",
+              "table_target":"",
+              "graph_target":"rdtypecontainer",
+              "subtitle":"Received Queries Rate",
+              "title":"Query Types Traffic"
+            };
+
+           </script>
+
+
+           [% INCLUDE "chart.tt" %]
+         
           
         </div>
         <div class="tab-pane"  id="tab4">
@@ -63,11 +80,32 @@
 
 $("#tabIP").click(function(){
    
+    loadElements(v4v6_prop);
     prop=v4v6_prop;
-    var chart;
-    getData(prop);
-   
+    
  });
+
+
+
+ $("#tabRdType").click(function(){
+
+   loadElements(rdtype_prop);
+   prop=rdtype_prop;
+
+  });
+
+function loadElements(prop){
+    if(prop.isLoaded){
+      console.log('Data was already loaded...');
+    }
+    else{
+      console.log('Loading the data for the first time...');
+      var chart;
+      getData(prop);
+    }
+}
+
+
 
 
 </script>

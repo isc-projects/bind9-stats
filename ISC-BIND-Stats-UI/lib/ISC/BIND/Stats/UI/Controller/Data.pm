@@ -216,16 +216,6 @@ sub site_hourly : Local {
       }
   };
 
-  #  my $params = {
-  #    wanted  => { q{value.qps} => 1 },
-  #    key_sub => sub {
-  #      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
-  #      return $1;
-  #    },
-  #    dataset_sub => sub { return $_[0]->{value}->{qps} },
-  #    collection  => q{rescode_traffic_hourly}
-  #  };
-
   if ( $from && $to ) {
     $params->{find} = {
                         q{_id.sample_time} => {
@@ -377,7 +367,6 @@ sub v6v4_daily : Local {
     my $pattern = qr{^$site};
     $params->{find}->{q{_id.pubservhost}} = $pattern;
     $params->{collection} = q{server_stats_daily};
-    $params->{dataset_sub} = sub { return $_[0]->{value}->{nsstat_qps} };
     $params->{wanted} = { q{value.nsstat_qps} => 1 };
   }
 
@@ -424,7 +413,6 @@ sub v6v4_hourly : Local {
       my $pattern = qr{^$site};
       $params->{find}->{q{_id.pubservhost}} = $pattern;
       $params->{collection} = q{server_stats_hourly};
-      $params->{dataset_sub} = sub { return $_[0]->{value}->{nsstat_qps} };
       $params->{wanted} = { q{value.nsstat_qps} => 1 };
     }
 
@@ -434,7 +422,7 @@ sub v6v4_hourly : Local {
 }
 
 sub rdtype : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -467,11 +455,30 @@ sub rdtype : Local {
     };
   }
 
+  if ($site) {
+
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats};
+    $params->{dataset_sub} = sub { return $_[0]->{rdtype_qps} };
+    $params->{wanted} = { rdtype_qps => 1 };
+
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$gte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$gte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$gte}}->epoch * 1000;
+    }
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$lte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$lte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$lte}}->epoch * 1000;
+    }
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub rdtype_hourly : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -503,11 +510,22 @@ sub rdtype_hourly : Local {
         { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
   }
 
+  if ($site) {
+    if ($site) {
+      $c->log->debug( 'Looking for site:' . $site );
+      my $pattern = qr{^$site};
+      $params->{find}->{q{_id.pubservhost}} = $pattern;
+      $params->{collection} = q{server_stats_hourly};
+      $params->{wanted} = { q{value.rdtype_qps} => 1 };
+    }
+
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub rdtype_daily : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $params = {
@@ -519,6 +537,14 @@ sub rdtype_daily : Local {
   $params->{find} =
     { q{_id.sample_time} =>
       { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
+
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats_daily};
+    $params->{wanted} = { q{value.rdtype_qps} => 1 };
+  }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
@@ -997,7 +1023,6 @@ sub get_from_traffic : Private {
         }
       }
       else {
-        $c->log->debug('WARNING: using qps counters...');
         $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
       }
     }
