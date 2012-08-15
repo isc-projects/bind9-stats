@@ -82,10 +82,18 @@ sub site_detail : Local {
   $c->stash->{site_info} = $site_data;
 
   my $addr_components = $site_data->{value}->{address_components};
-  my ($country) = @{$addr_components}[-1];
-  
-  $c->log->debug("Country: " . Dumper($country));
-  
+
+  my $country;
+
+  foreach my $addr ( @{$addr_components} ) {
+    if ( 'country' ~~ $addr->{types} ) {
+      $country = $addr;
+      last;
+    }
+  }
+
+  $c->log->debug( "Country: " . Dumper($country) );
+
   $c->stash->{wanted_region} = $country->{short_name};
   $c->stash->{page_title} = sprintf(
                                      'Site Detail for %s',
