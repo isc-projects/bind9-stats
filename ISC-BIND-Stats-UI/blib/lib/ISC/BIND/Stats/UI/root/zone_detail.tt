@@ -1,0 +1,34 @@
+[% INCLUDE "header.tt" %]
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+                
+        [% INCLUDE "chart.tt" %]
+    
+      </div>
+
+<div id="summary_table"></div>
+    
+     <script type="text/javascript">
+
+    var prop={
+      "resolution":"",
+      "type":"zone_detail",
+      "extra_args":"[% zone_name %]",
+      "table_target":"summary_table",
+      "graph_target":"container",
+      "subtitle":"Received Queries Rate",
+      "title":"Traffic across all Locations"
+    };
+
+     var chart;
+     $(document).ready(function() {
+       getData(prop);
+     });
+     
+    
+
+     </script>
+
+  
+[% INCLUDE "footer.tt" %]
+

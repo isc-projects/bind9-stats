@@ -1,0 +1,8 @@
+
+Controller:
+- Add zone_daily, zone_hourly and update zone
+- Add site detail
+
+View:
+- Add zone with Zoomable Graph
+- Add site detail

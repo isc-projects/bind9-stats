@@ -1,0 +1,44 @@
+[% INCLUDE "header.tt" %]
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+                
+        [% INCLUDE "chart.tt" %]
+    
+              
+      </div>
+
+
+    
+      <div id="summaryTable"></div>
+
+
+
+
+
+      <script type="text/javascript">
+
+
+         var prop={
+           "resolution":"daily",
+           "type":"edns0",
+           "detail_url":"",
+           "table_target":"summaryTable",
+           "graph_target":"container",
+           "subtitle":"Received Queries Rate",
+           "title":"EDNS0 Traffic"
+         };
+
+          var chart;
+          $(document).ready(function() {
+            getData(prop);
+          });
+
+
+      </script>
+
+
+
+
+
+[% INCLUDE "footer.tt" %]
+
