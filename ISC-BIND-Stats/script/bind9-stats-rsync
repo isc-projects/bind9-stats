@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# bind9-stats-rsync -- automate fetching the stats data files from the pubservs
+# lem@isc.org 20120713
+
+RSYNC=/usr/bin/rsync
+RSYNC_DEST=/data/froot/hosts
+RSYNC_USER=f-stats
+RSYNC_PATH=/var/f-stats/data/
+LOG_TEMP=/var/spool/mongo-logs/tmp
+LOG_DEST=/var/spool/mongo-logs/queue
+LNAME=bind9-rsync-log
+SSH_CONFIG=~f-stats/froot.conf
+SSH_COMMAND="/usr/bin/ssh -l ${RSYNC_USER} -F ${SSH_CONFIG}"
+RSYNC_OPTS="-a --remove-source-files"
+MODULE='bind rsync'
+
+# Find the list of hosts for which we'll do the fetch operation. We do
+# this by parsing the SSH_CONFIG file, so that only one file needs to
+# be touched by the humans overseeing my operation.
+
+for pubserv in `egrep '^Host ' ${SSH_CONFIG} | awk '{ print $2 }'`
+do
+      # echo '*** ' $pubserv
+      DEST=${RSYNC_DEST}/$pubserv/
+      HOST=${pubserv}.root-servers.org
+      mkdir -p ${DEST}
+      ( ${RSYNC} ${RSYNC_OPTS} -e "${SSH_COMMAND[@]}" \
+        ${RSYNC_USER}@${pubserv}:${RSYNC_PATH} ${DEST} 2>&1 | \
+        tee ${LOG_TEMP}/${LNAME}.${HOST}.$$.${BASHPID} ) &
+done
+
+# Wait for all the rsync processes before continuing
+wait
+
+# Now, fix the rsync log files we left in the tmp dir
+
+for log in `find ${LOG_TEMP} -name "${LNAME}.*.$$.*"`
+do
+
+    logfile=`basename $log`
+    time=`stat -c %Y $log`
+    server=`echo $logfile | sed 's/^bind9-rsync-log\.\(.*\)\.[0-9]*\.[0-9]*$/\\1/'`
+
+    # Empty log files mean there's no error, so note this appropriately
+    if [ -s $log ] ; then
+        cat <<EOF >> ${LOG_TEMP}/${LNAME}.$$
+time+i:
+$time
+--time
+
+module+i:
+$MODULE
+--module
+
+server+i:
+$server
+--server
+
+code+i:
+FAIL
+--code
+
+status:
+rsync failure
+--status
+
+info:
+EOF
+        cat $log >>  ${LOG_TEMP}/${LNAME}.$$
+        cat <<EOF >> ${LOG_TEMP}/${LNAME}.$$
+--info
+
+--end-of-log--
+
+EOF
+    else
+        cat <<EOF >> ${LOG_TEMP}/${LNAME}.$$
+time+i:
+$time
+--time
+
+module+i:
+$MODULE
+--module
+
+server+i:
+$server
+--server
+
+code+i:
+OK
+--code
+
+status:
+rsync completed ok
+--status
+
+--end-of-log--
+
+EOF
+    fi
+
+    # Get rid of the proto-log file
+    rm $log
+
+done
+
+# Move to log to where it can be processed
+mv ${LOG_TEMP}/${LNAME}.$$ ${LOG_DEST}/
+
