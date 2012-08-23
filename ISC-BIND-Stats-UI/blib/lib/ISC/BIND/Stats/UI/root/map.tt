@@ -1,0 +1,111 @@
+    <script type="text/javascript">
+
+   // var dataSeries=[% series %];
+
+   var dataSeries=[];
+   var graphTitle="Traffic Across all Nodes";
+
+    var chart;
+    $(document).ready(function() {
+
+
+          $.ajax({
+                url: '/data/location_table',  
+                success: function(data){
+          
+                 // console.log(JSON.stringify(data));
+                  
+                  table=data.table;
+                  sample_time=new Date(data.sample_time);
+                  
+                  var locationData=[];
+                  var tableData=[];
+                  table.forEach(function (r){
+                    locationData.push([r[0],r[1],r[4],r[3]]);
+                    tableData.push([r[4],r[5],r[2],r[3]]);
+                  });
+                  
+                 // console.log(JSON.stringify(locationData));
+                  
+                  $('#subtitle').html('updated: ' + sample_time);
+                  
+                  drawMarkersMap(locationData);
+                  writeLocationTable(tableData,{target:"locationTable"});
+
+                  }
+              });
+
+      
+
+    });
+
+    </script>
+
+
+      <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+      <script type='text/javascript'>
+      
+        var regions={
+               "DZ":"002","EG":"002","EH":"002","LY":"002","MA":"002","SD":"002","TN":"002","BF":"002","BJ":"002","CI":"002","CV":"002","GH":"002","GM":"002","GN":"002","GW":"002","LR":"002","ML":"002","MR":"002","NE":"002","NG":"002","SH":"002","SL":"002","SN":"002","TG":"002","AO":"002","CD":"002","ZR":"002","CF":"002","CG":"002","CM":"002","GA":"002","GQ":"002","ST":"002","TD":"002","BI":"002","DJ":"002","ER":"002","ET":"002","KE":"002","KM":"002","MG":"002","MU":"002","MW":"002","MZ":"002","RE":"002","RW":"002","SC":"002","SO":"002","TZ":"002","UG":"002","YT":"002","ZM":"002","ZW":"002","BW":"002","LS":"002","NA":"002","SZ":"002","ZA":"002","GG":"150","JE":"150","AX":"150","DK":"150","EE":"150","FI":"150","FO":"150","GB":"150","IE":"150","IM":"150","IS":"150","LT":"150","LV":"150","NO":"150","SE":"150","SJ":"150","AT":"150","BE":"150","CH":"150","DE":"150","DD":"150","FR":"150","FX":"150","LI":"150","LU":"150","MC":"150","NL":"150","BG":"150","BY":"150","CZ":"150","HU":"150","MD":"150","PL":"150","RO":"150","RU":"150","SU":"150","SK":"150","UA":"150","AD":"150","AL":"150","BA":"150","ES":"150","GI":"150","GR":"150","HR":"150","IT":"150","ME":"150","MK":"150","MT":"150","CS":"150","RS":"150","PT":"150","SI":"150","SM":"150","VA":"150","YU":"150","BM":"019","CA":"019","GL":"019","PM":"019","US":"019","AG":"019","AI":"019","AN":"019","AW":"019","BB":"019","BL":"019","BS":"019","CU":"019","DM":"019","DO":"019","GD":"019","GP":"019","HT":"019","JM":"019","KN":"019","KY":"019","LC":"019","MF":"019","MQ":"019","MS":"019","PR":"019","TC":"019","TT":"019","VC":"019","VG":"019","VI":"019","BZ":"019","CR":"019","GT":"019","HN":"019","MX":"019","NI":"019","PA":"019","SV":"019","AR":"019","BO":"019","BR":"019","CL":"019","CO":"019","EC":"019","FK":"019","GF":"019","GY":"019","PE":"019","PY":"019","SR":"019","UY":"019","VE":"019","TM":"142","TJ":"142","KG":"142","KZ":"142","UZ":"142","CN":"142","HK":"142","JP":"142","KP":"142","KR":"142","MN":"142","MO":"142","TW":"142","AF":"142","BD":"142","BT":"142","IN":"142","IR":"142","LK":"142","MV":"142","NP":"142","PK":"142","BN":"142","ID":"142","KH":"142","LA":"142","MM":"142","BU":"142","MY":"142","PH":"142","SG":"142","TH":"142","TL":"142","TP":"142","VN":"142","AE":"142","AM":"142","AZ":"142","BH":"142","CY":"142","GE":"142","IL":"142","IQ":"142","JO":"142","KW":"142","LB":"142","OM":"142","PS":"142","QA":"142","SA":"142","NT":"142","SY":"142","TR":"142","YE":"142","YD":"142","AU":"009","NF":"009","NZ":"009","FJ":"009","NC":"009","PG":"009","SB":"009","VU":"009","FM":"009","GU":"009","KI":"009","MH":"009","MP":"009","NR":"009","PW":"009","AS":"009","CK":"009","NU":"009","PF":"009","PN":"009","TK":"009","TO":"009","TV":"009","WF":"009","WS":"009"
+        };
+      
+      
+        google.load('visualization', '1', {'packages': ['geochart']});
+
+        var zoomed=false;
+
+        function drawMarkersMap(locationData) {
+          var data = google.visualization.arrayToDataTable(locationData);
+
+          var region='[% wanted_region %]';
+          region= region ? region : 'world';
+
+
+          var options = {
+            region: region,
+            displayMode: 'markers',
+            backgroundColor: {fill:'#89C1D7',stroke:'#073458',strokeWidth:5},
+            markerOpacity: 0.9,
+            colorAxis: {minValue:0, colors: ['green','green','yellow', 'red']},
+            enableRegionInteractivity:true
+          };
+        
+    
+          // This is where we're drawing the map
+
+          var container = document.getElementById('map_div');
+          var geomap = new google.visualization.GeoChart(container);
+        
+          // listener to be triggered once a region is clicked
+          google.visualization.events.addListener(
+            geomap, 'regionClick', function(e) {
+                    var opt={};
+                    
+                    if(zoomed){
+                      opt=options;
+                      zoomed=false;
+                    }
+                    else{
+                      zoomed=true;
+                     
+                      var newOptions = jQuery.extend(true, {}, options);
+                    
+                      newOptions['region'] = regions[e.region];
+                      newOptions['resolution']='countries';
+                                                
+                      opt=newOptions;
+                    }
+      
+                    geomap.draw(data,opt);
+                
+              });
+        
+       
+        geomap.draw(data, options);
+
+    };
+      
+     
+      
+      </script>
+

@@ -23,8 +23,10 @@ Catalyst Controller.
 =cut
 
 my $nf = Number::Format->new;
-my $g;
 my $config;
+
+# To store locations
+my $location = {};
 
 sub begin : Private {
   my ( $self, $c ) = @_;
@@ -108,10 +110,15 @@ sub zone_detail : Local {
   $zone =~ s{^root$}{\.};
 
   my $params = {
-    wanted => { qps => 1 },
-    find   => {
-            q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 },
-            q{_id.zone}        => $zone
+    collection  => q{global_traffic_5min},
+    wanted      => { q{value.qps} => 1 },
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
+
+    find => {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        },
+        q{_id.zone} => $zone
     },
     plot_wanted => [
         qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
@@ -137,16 +144,29 @@ sub site : Local {
   if ( $from && $to ) {
     ( $from, $to ) = map { sprintf( q{%d}, $_ ) * 1 } $from, $to;
   }
+
   my $params = {
-    wanted  => { qps => 1 },
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~
-        m{(\w{3}\d{1}).*?$};    # use the pubservhost name but
-                                # use only the first three leters
-                                # that identify the site name
+    wanted      => { q{opcode_qps} => 1 },
+    collection  => q{server_stats},
+    dataset_sub => sub             { return $_[0]->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
       }
   };
+
+  #  my $params = {
+  #    wanted  => { qps => 1 },
+  #    key_sub => sub {
+  #      $_[0]->{_id}->{pubservhost} =~
+  #        m{(\w{3}\d{1}).*?$};    # use the pubservhost name but
+  #                                # use only the first three leters
+  #                                # that identify the site name
+  #      return $1;
+  #      }
+  #  };
 
   if ( $from && $to ) {
     $params->{find} = {
@@ -158,7 +178,8 @@ sub site : Local {
   }
   else {
     $params->{find} =
-      { q{_id.sample_time} => { q{$gte} => ( $now->epoch - 86400 ) * 1000 } };
+      { q{_id.sample_time} =>
+        { q{$gte} => ( $now->epoch - ( 2 * 3600 ) ) * 1000 } };
   }
 
   if ($server) {
@@ -184,13 +205,15 @@ sub site_hourly : Local {
   }
 
   my $params = {
-    wanted  => { q{value.qps} => 1 },
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+    wanted     => { q{value.opcode_qps} => 1 },
+    collection => q{server_stats_hourly},
+    dataset_sub => sub { return $_[0]->{value}->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
-    },
-    dataset_sub => sub { return $_[0]->{value}->{qps} },
-    collection  => q{rescode_traffic_hourly}
+      }
   };
 
   if ( $from && $to ) {
@@ -220,15 +243,27 @@ sub site_daily : Local {
   my ( $self, $c, $server ) = @_;
 
   my $params = {
-    wanted  => { q{value.qps} => 1 },
-    find    => {},
-    key_sub => sub {
-      $_[0]->{_id}->{pubservhost} =~ m{(\w{3}\d{1}).*?$};
+    wanted     => { q{value.opcode_qps} => 1 },
+    collection => q{server_stats_daily},
+    dataset_sub => sub { return $_[0]->{value}->{opcode_qps} },
+    plot_wanted => [qw(QUERY)],
+    find        => {},
+    key_sub     => sub {
+      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
       return $1;
-    },
-    dataset_sub => sub { return $_[0]->{value}->{qps} },
-    collection  => q{rescode_traffic_daily}
+      }
   };
+
+  # my $params = {
+  #    wanted  => { q{value.qps} => 1 },
+  #    find    => {},
+  #    key_sub => sub {
+  #      $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}\d{1})};
+  #      return $1;
+  #    },
+  #    dataset_sub => sub { return $_[0]->{value}->{qps} },
+  #    collection  => q{rescode_traffic_daily}
+  #  };
 
   if ($server) {
     $c->log->debug( q{Setting server to: } . $server );
@@ -263,7 +298,7 @@ sub server : Local {
 }
 
 sub v6v4 : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -290,16 +325,35 @@ sub v6v4 : Local {
     };
   }
   else {
-    $params->{find} =
-      { q{_id.sample_time} =>
-        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 86400 ) } };
+    $params->{find} = {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        }
+    };
+  }
+
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats};
+    $params->{dataset_sub} = sub { return $_[0]->{nsstat_qps} };
+    $params->{wanted} = { nsstat_qps => 1 };
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$gte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$gte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$gte}}->epoch * 1000;
+    }
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$lte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$lte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$lte}}->epoch * 1000;
+    }
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub v6v4_daily : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
 
   my $params = {
                  wanted     => { q{value.nsstat_qps} => 1 },
@@ -308,11 +362,19 @@ sub v6v4_daily : Local {
                  plot_wanted => [qw(Requestv4 Requestv6)],
   };
 
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats_daily};
+    $params->{wanted} = { q{value.nsstat_qps} => 1 };
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub v6v4_hourly : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -345,11 +407,22 @@ sub v6v4_hourly : Local {
         { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
   }
 
+  if ($site) {
+    if ($site) {
+      $c->log->debug( 'Looking for site:' . $site );
+      my $pattern = qr{^$site};
+      $params->{find}->{q{_id.pubservhost}} = $pattern;
+      $params->{collection} = q{server_stats_hourly};
+      $params->{wanted} = { q{value.nsstat_qps} => 1 };
+    }
+
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub rdtype : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -375,16 +448,37 @@ sub rdtype : Local {
     };
   }
   else {
-    $params->{find} =
-      { q{_id.sample_time} =>
-        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 86400 ) } };
+    $params->{find} = {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        }
+    };
+  }
+
+  if ($site) {
+
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats};
+    $params->{dataset_sub} = sub { return $_[0]->{rdtype_qps} };
+    $params->{wanted} = { rdtype_qps => 1 };
+
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$gte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$gte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$gte}}->epoch * 1000;
+    }
+    if ( $params->{find}->{q{_id.sample_time}}->{q{$lte}} ) {
+      $params->{find}->{q{_id.sample_time}}->{q{$lte}} =
+        $params->{find}->{q{_id.sample_time}}->{q{$lte}}->epoch * 1000;
+    }
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub rdtype_hourly : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $from = $c->request->param(q{from}) || 0;
@@ -416,11 +510,22 @@ sub rdtype_hourly : Local {
         { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
   }
 
+  if ($site) {
+    if ($site) {
+      $c->log->debug( 'Looking for site:' . $site );
+      my $pattern = qr{^$site};
+      $params->{find}->{q{_id.pubservhost}} = $pattern;
+      $params->{collection} = q{server_stats_hourly};
+      $params->{wanted} = { q{value.rdtype_qps} => 1 };
+    }
+
+  }
+
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 sub rdtype_daily : Local {
-  my ( $self, $c, $server ) = @_;
+  my ( $self, $c, $site ) = @_;
   my $now = DateTime->now();
 
   my $params = {
@@ -432,6 +537,14 @@ sub rdtype_daily : Local {
   $params->{find} =
     { q{_id.sample_time} =>
       { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 604800 ) } };
+
+  if ($site) {
+    $c->log->debug( 'Looking for site:' . $site );
+    my $pattern = qr{^$site};
+    $params->{find}->{q{_id.pubservhost}} = $pattern;
+    $params->{collection} = q{server_stats_daily};
+    $params->{wanted} = { q{value.rdtype_qps} => 1 };
+  }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
@@ -464,9 +577,11 @@ sub opcode : Local {
     };
   }
   else {
-    $params->{find} =
-      { q{_id.sample_time} =>
-        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 86400 ) } };
+    $params->{find} = {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        }
+    };
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
@@ -556,9 +671,11 @@ sub tsig_sig0 : Local {
     };
   }
   else {
-    $params->{find} =
-      { q{_id.sample_time} =>
-        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 86400 ) } };
+    $params->{find} = {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        }
+    };
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
@@ -651,9 +768,11 @@ sub edns0 : Local {
     };
   }
   else {
-    $params->{find} =
-      { q{_id.sample_time} =>
-        { q{$gte} => DateTime->from_epoch( epoch => $now->epoch - 86400 ) } };
+    $params->{find} = {
+        q{_id.sample_time} => {
+          q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 3600 * 2 ) )
+        }
+    };
   }
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
@@ -720,11 +839,27 @@ sub location_table : Local {
   my ( $self, $c, ) = @_;
   my $now = DateTime->now();
 
-  $g = Geo::IATA->new( $config->{geo_iata_db} );
-
-  my $db = $c->model('BIND')->db;
+  my $db               = $c->model('BIND')->db;
+  my $last_dataset_cur = $db->datasets->find();
+  $last_dataset_cur->slave_okay(1);
   my $last_dataset =
-    $db->datasets->find()->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
+    $last_dataset_cur->sort( { q{_id.sample_time} => -1 } )->limit(1)->next;
+
+  if ( scalar keys %{$location} == 0 ) {
+    my $loc_cur = $db->locations->find();
+
+    while ( $loc_cur->has_next ) {
+      my $loc = $loc_cur->next;
+
+      $location->{ lc $loc->{_id} } = [
+                    $loc->{value}->{geometry}->{location}->{lat},    # Latitude
+                    $loc->{value}->{geometry}->{location}->{lng},    # Longitude
+                    $loc->{value}->{formatted_address}               # name
+      ];
+
+    }
+
+  }
 
   my $params = {
     wanted      => { q{opcode_qps} => 1 },
@@ -734,14 +869,17 @@ sub location_table : Local {
     find    => { q{_id.sample_time} => $last_dataset->{_id}->{sample_time} },
     key_sub => sub {
       $_[0]->{_id}->{pubservhost} =~ m{^(\w{3}).*?$};
-      return $g->iata2location($1);
+      return $1;
       }
   };
 
   my $data = $c->forward( 'get_from_traffic', [$params] );
-  my $series = [ [ 'Location', 'Percent (%)', 'Traffic (qps)' ] ];
+  my $series =
+    [
+     [ 'Latitude', 'Longitude', 'Percent (%)', 'Traffic (qps)', 'Name', 'IATA' ]
+    ];
 
-  #$c->log->debug( Dumper($data) );
+  $c->log->debug( Dumper($data) );
 
   # Pull the max value from the series that we want:
 
@@ -753,17 +891,19 @@ sub location_table : Local {
   }
 
   map {
-    push @{$series},
-      [
-        $_->{name},
-        sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
-        $_->{data}->[-1]->[-1] * 1
+    push @{$series}, [
+      $location->{ $_->{name} }->[0],    # Latitude
+      $location->{ $_->{name} }->[1],    # Longitude
+      sprintf( '%d', ( ( $_->{data}->[-1]->[-1] ) / $total ) * 100 ) * 1,
+      $_->{data}->[-1]->[-1] * 1,
+      $location->{ $_->{name} }->[2],    # name
+      $_->{name}                         # IATA code
       ]
   } @{ $data->{series} };
 
   $c->stash->{data} = {
                         table       => $series,
-                        sample_time => $last_dataset->{_id}->{sample_time} * 1000
+                        sample_time => $last_dataset->{_id}->{sample_time}
   };
 
 }
@@ -827,6 +967,10 @@ sub get_from_traffic : Private {
 
   my $traffic_cursor = $db->$collection->find( $args->{find}, $args->{wanted} );
 
+  # Allow us to read from slave
+
+  $traffic_cursor->slave_okay(1);
+
   if ( $args->{order} ) {
     $traffic_cursor->sort( $args->{order} );
   }
@@ -863,7 +1007,7 @@ sub get_from_traffic : Private {
 
     my $dataset = $dataset_sub->($data);
 
-    $c->log->debug( 'Dataset used: ' . Dumper($dataset) );
+    #$c->log->debug( 'Dataset used: ' . Dumper($dataset) );
 
     while ( my ( $k, $v ) = each %{$dataset} ) {
 
@@ -879,7 +1023,6 @@ sub get_from_traffic : Private {
         }
       }
       else {
-        $c->log->debug('using qps counters...');
         $set->{$key}->{$jsTime} += $v if ( $k ne 'qryauthans' );
       }
     }
@@ -907,11 +1050,12 @@ sub get_from_traffic : Private {
   # $c->log->debug( Dumper( \@series ) );
 
   return {
-           categories    => \@x_axis,
-           series        => [ sort { $a->{name} cmp $b->{name} } @series ],
-           traffic_count => $nf->format_number($total_traffic),
-           min           => $min,
-           max           => $max
+         categories => \@x_axis,
+         series =>
+           [ sort { $b->{data}->[-1]->[1] <=> $a->{data}->[-1]->[1] } @series ],
+         traffic_count => $nf->format_number($total_traffic),
+         min           => $min,
+         max           => $max
   };
 
 }

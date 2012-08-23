@@ -3,6 +3,9 @@ package ISC::BIND::Stats::UI::Model::BIND;
 use Moose;
 BEGIN { extends 'Catalyst::Model::MongoDB' };
 
+
+$MongoDB::Cursor::slave_okay = 1;
+
 __PACKAGE__->config(
 	host => '',
 	port => '',
