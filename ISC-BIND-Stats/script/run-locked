@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# run-locked -- This script executes the script left in the command if
+# a lock can be obtained. This can be used to easily provide a
+# "critical region".
+#
+# © 2012 Internet Systems Consortium, All Rights Reserved
+#
+# Luis Muñoz <lem@isc.org>
+
+LOCKNAME=$1; shift
+prog=`basename $0`
+locker=/usr/bin/lockfile-create
+unlocker=/usr/bin/lockfile-remove
+toucher=/usr/bin/lockfile-touch
+
+if [ -z "${LOCKNAME}" ] ; then
+    cat <<EOF >&2
+
+Did not specify a name for the lock.
+
+Syntax: ${prog} name program args...
+
+Where 'name' is the name of the lock or critical region. 'Program' and
+'args' are what is supposed to be executed inside the critical region.
+
+EOF
+    exit 255;
+fi
+
+if [ \! \( -x ${locker} -a -x ${unlocker} -a -x ${toucher} \) ] ; then
+ 
+  cat <<EOF >&2
+
+$prog requires $locker,
+$unlocker and $toucher
+to be available and executable on this system.
+
+EOF
+
+  exit 255
+fi
+
+LOCKFILE=/var/lock/${LOCKNAME}
+umask 022
+
+# Attempt to attain the lock.
+
+${locker} $LOCKFILE
+  if [ $? -ne 0 ] ; then
+    cat <<EOF >&2
+
+Unable to run $prog because lockfile $LOCKFILE
+acquisition failed.
+
+Please check and if appropriate, remove the lockfile.
+
+EOF
+    exit 1
+  fi
+
+# Keep lockfile fresh
+${toucher} $LOCKFILE &
+LOCKTOUCHPID="$!"
+
+# Run whatever was passed to us
+$*
+  
+#
+# Clean up lockfile
+#
+
+kill $LOCKTOUCHPID
+${unlocker} $LOCKFILE
+
