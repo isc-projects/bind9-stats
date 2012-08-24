@@ -2,6 +2,18 @@ var oldDataSeries = [];
 var dataSeries = [];
 
 
+
+
+/* This is usted to format an error message */
+var flashError = function(args) {
+    $("#" + args.target).html("<div class=\"alert alert-error\">" 
+    + "<a class=\"close\" data-dismiss=\"alert\" href=\"#\">&times;</a>" 
+    + "<h4>Error:</h4>" + args.message + "</div>");
+    };
+
+
+
+
 /*
 * getData(prop)
 *
@@ -37,27 +49,41 @@ var dataSeries = [];
 *
 */
 function getData(prop) {
-  
-  console.log('getData() for ' + prop.type);
-  prop.isLoaded=true;
-  
+
+ // console.log('getData() for ' + prop.type);
+  prop.isLoaded = true;
+
   var data_url = "/data/" + prop.type;
   if (prop.resolution) {
     data_url += "_" + prop.resolution;
   }
 
-  if(prop.extra_args){
+  if (prop.extra_args) {
     data_url += "/" + prop.extra_args;
   }
 
   $.ajax({
     url: data_url,
+    statusCode: {
+      404: function() {
+        flashError({
+          "target": prop.graph_target,
+          "message": "Data Source cannot be found"
+        });
+      },
+      500: function() {
+        flashError({
+          "target": prop.graph_target,
+          "message": "Error occurred at the server while retrieving the data, please try again later..."
+        });
+      }
+    },
     success: function(data) {
       newData = data.series;
 
       // Only write the table if the table_target param is set
-      if(prop.table_target){
-        console.log("Writing data table...");
+      if (prop.table_target) {
+        //console.log("Writing data table...");
         writeTable(data.series, {
           target: prop.table_target,
           detail_url: prop.detail_url
@@ -86,23 +112,24 @@ function getData(prop) {
               });
             });
           } else {
-          //  console.log("first iteration");
+            //  console.log("first iteration");
             otherData.data = s.data;
           }
         }
       });
 
-      if(otherData.data.length > 0){
+      if (otherData.data.length > 0) {
         chartData.push(otherData);
       }
 
-      console.log("Writing new chart...");
+    //  console.log("Writing new chart...");
       chart = generateZoomableStackedGraph({
         title: prop.title,
         data: chartData,
         subtitle: prop.subtitle,
         target: prop.graph_target,
         type: prop.type,
+        stacking: prop.stacking,
         extra_args: prop.extra_args
       });
 
@@ -110,7 +137,7 @@ function getData(prop) {
         chart.hideLoading();
       }
 
-      console.log("All Done!");
+      // console.log("All Done!");
     }
   });
 
@@ -133,34 +160,34 @@ function generateZoomableStackedGraph(prop) {
         events: {
           selection: function selectChartRange(event) {
             var chart = this;
-            
-            console.log("Properties: " + JSON.stringify(prop));
+
+            //console.log("Properties: " + JSON.stringify(prop));
 
             oldDataSeries = chart.data;
 
-            console.log("Old Data Series: " + JSON.stringify(oldDataSeries));
+            //console.log("Old Data Series: " + JSON.stringify(oldDataSeries));
 
             isLoading = true;
             chart.showLoading("Fetching new dataset from server");
 
             // log the min and max of the primary, datetime x-axis
             if (event.xAxis) {
-              console.log("Zooming in at");
-              console.log(
-              event.xAxis[0].min, event.xAxis[0].max);
+              //console.log("Zooming in at");
+              //console.log(
+              //event.xAxis[0].min, event.xAxis[0].max);
 
               //perform a query to the server
               var range = event.xAxis[0].max - event.xAxis[0].min;
               var url = "/data/" + prop.type;
-            
-              console.log("RANGE IS: " + range);
+
+              //console.log("RANGE IS: " + range);
               if (range <= 86400000) {
 
                 if (currentResolution != "5min") {
                   currentResolution = "5min";
-                  console.log("range is day (5 min intervals)");
+                  //console.log("range is day (5 min intervals)");
                 } else {
-                  console.log("already at that resolution level (" + currentResolution + ")");
+                  //console.log("already at that resolution level (" + currentResolution + ")");
                   if (isLoading) {
                     chart.hideLoading();
                     isLoading = false;
@@ -172,10 +199,10 @@ function generateZoomableStackedGraph(prop) {
 
                 if (currentResolution != "hourly") {
                   currentResolution = "hourly";
-                  console.log("Range is week (hourly)");
+                  //console.log("Range is week (hourly)");
                   url += "_hourly";
                 } else {
-                  console.log("already at that resolution level (" + currentResolution + ")");
+                  //console.log("already at that resolution level (" + currentResolution + ")");
                   if (isLoading) {
                     chart.hideLoading();
                     isLoading = false;
@@ -188,10 +215,10 @@ function generateZoomableStackedGraph(prop) {
                 if (currentResolution != "hourly") {
 
                   currentResolution = "daily";
-                  console.log("Range is more than a week (daily)");
+                  //console.log("Range is more than a week (daily)");
                   url += "_daily";
                 } else {
-                  console.log("already at that resolution level (" + currentResolution + ")");
+                  //console.log("already at that resolution level (" + currentResolution + ")");
                   if (isLoading) {
                     chart.hideLoading();
                     isLoading = false;
@@ -201,17 +228,17 @@ function generateZoomableStackedGraph(prop) {
 
               }
 
-                if (prop.extra_args){
-                  console.log("adding extra args...");
-                  url += "/" + prop.extra_args;
-                  console.log("URL to be fetched: " + url);
-                }
+              if (prop.extra_args) {
+                //console.log("adding extra args...");
+                url += "/" + prop.extra_args;
+                //console.log("URL to be fetched: " + url);
+              }
 
               var newData;
               $.ajax({
                 url: url + "?from=" + event.xAxis[0].min + "&to=" + event.xAxis[0].max,
                 success: function(data) {
-                  console.log("data received: ",JSON.stringify(data));
+                  //console.log("data received: ", JSON.stringify(data));
                   newData = data.series;
                   replaceData(newData, chart);
 
@@ -224,19 +251,19 @@ function generateZoomableStackedGraph(prop) {
               });
 
             } else {
-              console.log("Restoring original chart");
+              //console.log("Restoring original chart");
               var newData;
-              
-              var url="/data/" + prop.type + "_daily";
-              
-              if (prop.extra_args){
-                    console.log("adding extra args...");
-                    url += "/" + prop.extra_args;
-                    console.log("URL to be fetched: " + url);
+
+              var url = "/data/" + prop.type + "_daily";
+
+              if (prop.extra_args) {
+                //console.log("adding extra args...");
+                url += "/" + prop.extra_args;
+                //console.log("URL to be fetched: " + url);
               }
-              
-              
-              
+
+
+
               $.ajax({
                 url: url,
                 success: function(data) {
@@ -285,7 +312,7 @@ function generateZoomableStackedGraph(prop) {
       },
       plotOptions: {
         area: {
-          stacking: "normal"
+          stacking: prop.stacking || "normal"
         },
         series: {
           marker: {
@@ -302,6 +329,8 @@ function generateZoomableStackedGraph(prop) {
       series: prop.data
     });
   });
+
+//  console.log('stacking: ' + prop.stacking);
 
   return chart;
 }
@@ -449,4 +478,3 @@ function replaceData(newData, chart) {
     })
   });
 }
-
