@@ -326,7 +326,20 @@ function generateZoomableStackedGraph(prop) {
           }
         }
       },
-      series: prop.data
+      series: prop.data,
+      colors: [
+        '#2299DD',
+        '#FFAA00',
+        '#0AA841', 
+      	'#2BC2BA',
+      	'#BD51BB', 
+      	'#AA4643', 
+      	'#89A54E', 
+      	'#80699B', 
+      	'#3D96AE', 
+      	'#FFDD77', 
+      	'#2B6AA1'
+      ]
     });
   });
 
