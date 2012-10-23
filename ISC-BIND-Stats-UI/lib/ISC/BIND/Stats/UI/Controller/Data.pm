@@ -114,8 +114,7 @@ sub zone : Local {
     $params->{find}->{q{$or}} = $zones_find;
   }
 
-  $c->log->debug(Dumper($params));
-
+  $c->log->debug( Dumper($params) );
 
   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 
@@ -129,69 +128,67 @@ sub zone : Local {
 sub zone_hourly : Local {
   my ( $self, $c, @zones ) = @_;
 
-   my $now = DateTime->now();
+  my $now = DateTime->now();
 
+  $c->log->info(q{Zone Traffic Hourly});
 
-   $c->log->info(q{Zone Traffic Hourly});
+  my $from = $c->request->param(q{from}) || 0;
+  my $to   = $c->request->param(q{to})   || 0;
 
+  if ( $from && $to ) {
+    ( $from, $to ) =
+      map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
+      $from, $to;
+  }
 
-   my $from = $c->request->param(q{from}) || 0;
-   my $to   = $c->request->param(q{to})   || 0;
+  $c->log->info( Dumper(@zones) );
 
-   if ( $from && $to ) {
-     ( $from, $to ) =
-       map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
-       $from, $to;
-   }
+  if ( q{root} ~~ \@zones ) {
+    map { $_ =~ s{^root$}{\.}; } @zones;
+  }
 
-   $c->log->info( Dumper(@zones) );
+  my $params = {
+    collection  => q{global_traffic_hourly},
+    wanted      => { q{value.qps} => 1 },
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
+    plot_wanted => [
+        qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
+    ],
 
-   if ( q{root} ~~ \@zones ) {
-     map { $_ =~ s{^root$}{\.}; } @zones;
-   }
+    key_sub => sub {
+      my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
+      $z =~ s{^\.$}{root};             # replace the '.' with 'root'
+      return $z;                       # return the resulting name
+      }
+  };
 
-   my $params = {
-     collection  => q{global_traffic_hourly},
-     wanted      => { q{value.qps} => 1 },
-     dataset_sub => sub { return $_[0]->{value}->{qps} },
-     plot_wanted => [
-         qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
-     ],
+  my $zones_find = [];
 
-     key_sub => sub {
-       my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
-       $z =~ s{^\.$}{root};             # replace the '.' with 'root'
-       return $z;                       # return the resulting name
+  if ( $from && $to ) {
+    $params->{find} = {
+                        q{_id.sample_time} => {
+                                                q{$gte} => $from,
+                                                q{$lte} => $to
+                        }
+    };
+  }
+  else {
+    $params->{find} = {
+       q{_id.sample_time} => {
+         q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 86400 * 7 ) )
        }
-   };
+    };
+  }
 
-   my $zones_find = [];
+  foreach my $zone (@zones) {
+    push @{$zones_find}, { q{_id.zone} => $zone };
+  }
 
-   if ( $from && $to ) {
-     $params->{find} = {
-                         q{_id.sample_time} => {
-                                                 q{$gte} => $from,
-                                                 q{$lte} => $to
-                         }
-     };
-   }
-   else {
-     $params->{find} = {
-         q{_id.sample_time} => {
-           q{$gte} => DateTime->from_epoch( epoch => $now->epoch - ( 86400 * 7 ) )
-         }
-     };
-   }
+  if ( scalar @{$zones_find} ) {
+    $params->{find}->{q{$or}} = $zones_find;
+  }
 
-   foreach my $zone (@zones) {
-     push @{$zones_find}, { q{_id.zone} => $zone };
-   }
-
-   if ( scalar @{$zones_find} ) {
-     $params->{find}->{q{$or}} = $zones_find;
-   }
-
-   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 }
 
 =head2 zone_daily
@@ -202,63 +199,61 @@ sub zone_hourly : Local {
 sub zone_daily : Local {
   my ( $self, $c, @zones ) = @_;
 
-  my ( $self, $c, @zones ) = @_;
+  my $now = DateTime->now();
 
-   my $now = DateTime->now();
+  my $from = $c->request->param(q{from}) || 0;
+  my $to   = $c->request->param(q{to})   || 0;
 
-   my $from = $c->request->param(q{from}) || 0;
-   my $to   = $c->request->param(q{to})   || 0;
+  if ( $from && $to ) {
+    ( $from, $to ) =
+      map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
+      $from, $to;
+  }
 
-   if ( $from && $to ) {
-     ( $from, $to ) =
-       map { DateTime->from_epoch( epoch => sprintf( q{%d}, $_ / 1000 ) * 1 ) }
-       $from, $to;
-   }
+  $c->log->info( Dumper(@zones) );
 
-   $c->log->info( Dumper(@zones) );
+  if ( q{root} ~~ \@zones ) {
+    map { $_ =~ s{^root$}{\.}; } @zones;
+  }
 
-   if ( q{root} ~~ \@zones ) {
-     map { $_ =~ s{^root$}{\.}; } @zones;
-   }
+  my $params = {
+    collection  => q{global_traffic_daily},
+    wanted      => { q{value.qps} => 1 },
+    dataset_sub => sub { return $_[0]->{value}->{qps} },
+    plot_wanted => [
+        qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
+    ],
 
-   my $params = {
-     collection  => q{global_traffic_daily},
-     wanted      => { q{value.qps} => 1 },
-     dataset_sub => sub { return $_[0]->{value}->{qps} },
-     plot_wanted => [
-         qw(qryformerr qryreferral qrynxdomain qryservfail qrysuccess qrynxrrset)
-     ],
+    key_sub => sub {
+      my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
+      $z =~ s{^\.$}{root};             # replace the '.' with 'root'
+      return $z;                       # return the resulting name
+      }
+  };
 
-     key_sub => sub {
-       my $z = $_[0]->{_id}->{zone};    # extract the zone name from the doc
-       $z =~ s{^\.$}{root};             # replace the '.' with 'root'
-       return $z;                       # return the resulting name
-       }
-   };
+  my $zones_find = [];
 
-   my $zones_find = [];
-
-   if ( $from && $to ) {
-     $params->{find} = {
-                         q{_id.sample_time} => {
-                                                 q{$gte} => $from,
-                                                 q{$lte} => $to
-                         }
-     };
-   }
-   else {
+  if ( $from && $to ) {
+    $params->{find} = {
+                        q{_id.sample_time} => {
+                                                q{$gte} => $from,
+                                                q{$lte} => $to
+                        }
+    };
+  }
+  else {
     $c->log->info('Returning the full dataset...');
-   }
+  }
 
-   foreach my $zone (@zones) {
-     push @{$zones_find}, { q{_id.zone} => $zone };
-   }
+  foreach my $zone (@zones) {
+    push @{$zones_find}, { q{_id.zone} => $zone };
+  }
 
-   if ( scalar @{$zones_find} ) {
-     $params->{find}->{q{$or}} = $zones_find;
-   }
+  if ( scalar @{$zones_find} ) {
+    $params->{find}->{q{$or}} = $zones_find;
+  }
 
-   $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
+  $c->stash->{data} = $c->forward( 'get_from_traffic', [$params] );
 
 }
 
@@ -322,10 +317,8 @@ sub zone_detail_hourly : Local {
   $zone //= q{};
   $zone =~ s{^root$}{\.};
 
-  my $now = DateTime->now;
-
   my $from = $c->request->param(q{from}) || 0;
-  my $to   = $c->request->param(q{to})   || 0;
+  my $to = $c->request->param(q{to}) || 0;
 
   if ( $from && $to ) {
     ( $from, $to ) =
