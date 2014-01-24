@@ -97,9 +97,9 @@ sub site_detail : Local {
   $c->stash->{wanted_region} = $country->{short_name};
   $c->stash->{page_title} = sprintf(
                                      'Site Detail for %s',
-                                     encode_utf8(
+                                     #encode_utf8(
                                         $site_data->{value}->{formatted_address}
-                                     )
+                                     #)
   );
   $c->stash->{page_subtitle} = sprintf( 'code name %s', uc $site );
 
