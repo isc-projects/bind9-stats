@@ -96,10 +96,10 @@ $("#tabIP").click(function(){
 
 function loadElements(prop){
     if(prop.isLoaded){
-      console.log('Data was already loaded...');
+//      console.log('Data was already loaded...');
     }
     else{
-      console.log('Loading the data for the first time...');
+//      console.log('Loading the data for the first time...');
       var chart;
       getData(prop);
     }
