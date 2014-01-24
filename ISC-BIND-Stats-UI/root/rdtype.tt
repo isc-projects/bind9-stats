@@ -14,6 +14,7 @@
           <script type="text/javascript">
 
              var prop={
+             //  "stacking":"percent",
                "resolution":"daily",
                "type":"rdtype",
                "detail_url":"",

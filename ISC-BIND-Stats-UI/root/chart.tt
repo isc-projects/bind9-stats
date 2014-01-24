@@ -57,7 +57,7 @@
      prop.subtitle="Received Queries Rate";
      chart.showLoading("Reloading Chart...");
 
-     console.log('loading new data...');
+     //console.log('loading new data...');
 
      getData(prop);
 
@@ -69,7 +69,7 @@
     prop.subtitle="Last two hours";
     chart.showLoading("Fetching latest data set...");
     
-    console.log('loading new data...');
+    //console.log('loading new data...');
     
     
     getData(prop);

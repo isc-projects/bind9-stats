@@ -47,7 +47,7 @@ isa_ok($with_args,'ISC::BIND::Stats');
 
 ok($with_args->{test},'test arg was retained');
 
-note(q{Trying to open an unexisteng file});
+note(q{Trying to open an non-existant file});
 
 my $nxfile=$parser->parse({file=>'/path/to/nowhere.xml'});
 ok(!$nxfile,q{Non-existing file returned undef});

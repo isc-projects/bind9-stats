@@ -1,19 +1,26 @@
 Source: libisc-bind-stats-perl
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 7)
-Build-Depends-Indep: libcommon-sense-perl (>= 3.3), libmongodb-perl, libwww-perl,
- libxml-sax-perl, perl (>= 5.10.1)
-Maintainer: Francisco Obispo <fobispo@isc.org>
-Standards-Version: 3.9.1
+Maintainer: mcr <mcr@>
+Build-Depends: debhelper (>= 8)
+Build-Depends-Indep: libcommon-sense-perl (>= 3.3),
+ libhttp-date-perl,
+ libmongodb-perl,
+ libxml-sax-perl,
+ libcommon-sense-perl,
+ perl (>= 5.10.1)
+Standards-Version: 3.9.2
 Homepage: http://search.cpan.org/dist/ISC-BIND-Stats/
 
 Package: libisc-bind-stats-perl
 Architecture: all
-Depends: ${misc:Depends}, ${perl:Depends}, libcommon-sense-perl (>= 3.3),
- libmongodb-perl, libwww-perl, libxml-sax-perl, perl (>= 5.10.1)
-Description: Parses the XML from BIND9 statistics channel
- ISC::BIND::Stats parses the XML produced from BIND9 stats channel. It is
- meant for high speed parsing, with the purpose of statistical aggregation.
+Depends: ${misc:Depends}, ${perl:Depends},
+ libcommon-sense-perl (>= 3.3),
+ libhttp-date-perl,
+ libmongodb-perl,
+ libxml-sax-perl,
+ perl (>= 5.10.1)
+Description: unknown
+ (no description was found)
  .
  This description was automagically extracted from the module by dh-make-perl.
