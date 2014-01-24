@@ -83,6 +83,7 @@ my $database;
 my $collection;
 my $datasets;
 my $server_stats;
+my $sample_interval=300;
 
 $connection = MongoDB::Connection->new( host => $config->{mongo_host},
                                         port => $config->{mongo_port} );
@@ -168,7 +169,7 @@ foreach my $file (@ARGV) {
   my $sample_time = str2time( $result->{sample_time} );
 
   # Adjust the sample_time to a 5 minute interval
-  $sample_time -= ( $sample_time % 300 );
+  $sample_time -= ( $sample_time % $sample_interval );
   $sample_time *= 1000;
 
   my $delta_seconds = 1;

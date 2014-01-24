@@ -14,7 +14,7 @@
         <script type="text/javascript">
 
        var prop={
-         "resolution":"",
+         "resolution":"daily",
          "type":"zone",
          "detail_url":"/zone_detail",
          "table_target":"summary_table",
