@@ -1,0 +1,5 @@
+libisc-bind-stats-perl (1.052000-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Francisco Obispo <fobispo@isc.org>  Thu, 2 Aug 2012 23:50:35 +0000

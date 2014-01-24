@@ -1,0 +1,237 @@
+#!/usr/bin/env perl
+
+=pod
+
+=head1 NAME
+
+mongo-logger [--mongo-host host] [--mongo-port port] [--mongo-db db]
+
+=head1 SYNOPSIS
+
+  mongo-logger [--mongo-host host] [--mongo-port port] [--mongo-db db] [files]
+
+  --mongo-host Server where the MongoDB is hosted
+  --mongo-port Port to connect to in the MongoDB server, defaults to 27012
+  --mongo-db   The name of the Mongo database where logs are to be stored
+
+=head1 DESCRIPTION
+
+C<mongo-logger> parses one or more input files (or STDIN) in a simple
+format, into one or more log messages that will be kept in a MongoDB
+collection.
+
+=cut
+
+use common::sense;
+use MongoDB;
+use Getopt::Long;
+use Pod::Usage;
+
+=pod
+
+=head2 Default Values
+
+The default values are as follows:
+
+               --mongo-host  'localhost'
+               --mongo-port  27017
+               --mongo-db    'logs'
+
+=cut
+
+my $config = {
+               mongo_host  => 'localhost',
+               mongo_port  => 27017,
+               mongo_db    => 'logs',
+};
+
+my $options = GetOptions(
+                          'mongo-host=s' => \$config->{mongo_host},
+                          'mongo-port=i' => \$config->{mongo_port},
+                          'mongo-db=s'   => \$config->{mongo_db}
+);
+
+pod2usage ({ -message => 'Must provide a --mongo-host', 
+             -verbose => 1 }) unless $config->{mongo_host};
+
+pod2usage ({ -message => 'Must provide a --mongo-port', 
+             -verbose => 1 }) unless $config->{mongo_port};
+
+pod2usage ({ -message => 'Must provide a --mongo-db', 
+             -verbose => 1 }) unless $config->{mongo_db};
+
+
+
+my $connection = MongoDB::Connection->new( host => $config->{mongo_host},
+                                           port => $config->{mongo_port} );
+
+# Initialize the MongoDB connection and get ready to parse data.
+
+my $dbname     = $config->{mongo_db};
+my $database   = $connection->$dbname;
+my $collection = $database->events;
+
+=pod
+
+=head2 Input File Syntax
+
+Input files (or blocks) need to have the following syntax:
+
+    event:
+    Event code or short description
+    --event
+    
+    message:
+    A longer message, meant as an explanation for the error message.
+    --message
+    
+    date:
+    A datestamp in a parseable format, to use as the event date
+    --date
+    
+    info:
+    Free-form text, typically the output prior to the actual error, that
+    will be added to the 
+    --info
+    
+    --end-of-log--
+
+The field delimiters and functions are self-explanatory. Arbitrary
+attributes can be added to the log message as needed. For instance:
+
+    server:
+    The name of the server that caused the error.
+    --server
+
+    file:
+    The file that was being parsed when the error happened.
+    --file
+
+    line:
+    The line number where the error was found.
+    --line
+
+The C<--end-of-log--> token must occur by itself in a line to mark the
+end of the log. At this point, C<mongo-logger> will attempt to send
+the log to the MongoDB or C<die()>.
+
+No nesting is allowed. The following is not accepted.
+
+    foo:
+    bar:
+    No, not foo.bar but an error.
+    --bar
+    --foo
+
+You can suffix the opening field delimiter with C<+i> and
+C<mongo-logger> will ensure that an index on that field exists. This
+can be used to speed up known searches with minimal changes to the
+software. This is an example of an entry for which we would like to
+have an index:
+
+    process+i:
+    Name or number of the process.
+    --process
+
+=cut
+
+my $attribute;
+my %values;
+my %indexes;
+
+while ( my $line = <> )
+{
+    chomp $line;
+    
+    # Skip blanks while we're not into an attribute.
+    next if not $attribute and $line =~ m{^\s*$};
+
+    # Non-blanks need to be the opening of an entry.
+    if ( not $attribute and $line =~ m{(?x)^([-_\w\d]+)(\+i)?:$} )
+    {
+        $attribute = $1;
+        my $index = $2;
+
+        # If this attribute requires an index, make it happen. But
+        # only once per entry.
+        if ( $index and not exists $indexes{$attribute} )
+        {
+            $collection->ensure_index({ $attribute => 1 }, {});
+            $indexes{$attribute} = 1;
+        }
+
+        next;
+    }
+    elsif  ( not $attribute and $line =~ m{^--end-of-log--$} )
+    {
+                                # If we find an end-of-log, it means
+                                # we have to commit the log to Mongo
+                                # and blank everyting else.
+
+        $collection->insert( \%values, { safe => 1 } );
+        $attribute = undef;
+        %values = ();
+
+        next;
+    }
+    elsif ( not $attribute )
+    {
+        die "Invalid line <$line>";
+    }
+
+    # Check if this is an end-of-attribute tag
+    if ( $attribute and $line =~ m{^--${attribute}$} )
+    {
+        $attribute = undef;
+        next;
+    }
+    elsif ( $attribute )
+    {
+                                # Otherwise, just place the whole line
+                                # into the attribute's value.
+
+        $values{$attribute} .= "\n" if defined $values{$attribute};
+        $values{$attribute} .= $line;
+        next;
+    }
+
+    die "Unexpected line <$line>";
+}
+
+exit 0;
+
+__END__
+
+=pod 
+
+=back
+
+=head1 SEE ALSO
+
+  http://www.isc.org
+
+=head1 AUTHOR
+
+Internet Systems Consortium Inc.
+
+=head1 LICENSE
+
+BSD
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2012  Internet Systems Consortium, Inc. ("ISC")
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+=cut
