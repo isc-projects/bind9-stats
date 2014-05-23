@@ -77,13 +77,25 @@ sub get_attribute {
 sub get_name {
     my $self    = shift;
     my($element) = @_;
-    return lc $self->get_attribute($element, "name");
+    return $self->get_attribute($element, "name");
 }
 
 sub get_namelc {
     my $self    = shift;
     my($element) = @_;
     return lc $self->get_name($element);
+}
+
+sub get_type {
+    my $self    = shift;
+    my($element) = @_;
+    return lc $self->get_attribute($element, "type");
+}
+
+sub get_typelc {
+    my $self    = shift;
+    my($element) = @_;
+    return lc $self->get_type($element);
 }
 
 sub characters {
@@ -216,9 +228,6 @@ sub characters_v2 {
 sub characters_v3 {
   my ( $self, $data ) = @_;
 
-  # do this with log4perl?
-  $self->optprint("in item[%u]: %s\n", scalar @{$element_stack}, join(' ', map { lc $_->{Name} } @{$element_stack}));
-
   my $element1 = $element_stack->[-1];
   my $element2 = $element_stack->[-2];
   my $element3 = $element_stack->[-3];
@@ -247,7 +256,7 @@ sub characters_v3 {
   }
 
   # process counter
-  if ( $v3stats && $element_name1 eq 'counter'
+  if (   $element_name1 eq 'counter'
       && $element_name2 eq 'counters'
       && $element_name3 eq 'zone'
       && $element_name4 eq 'zones'
@@ -260,25 +269,47 @@ sub characters_v3 {
       return;
   }
 
+  # could just take all counter categories.
   # for v3 opcode counters
-  if ( $v3stats && $element_name1 eq 'counter' &&
-      $element_name2 eq 'counters' &&
-      $self->get_namelc($element2) eq 'opcode' &&
-      $element_name3 eq 'server') {
-
-      my $counter_name = $element1->{Attributes}->{name}->{Value};
+  if (   $element_name1 eq 'counter'
+      && $element_name2 eq 'counters'
+      && $element_name3 eq 'server'
+      && $self->get_typelc($element2) eq 'opcode') {
+      my $counter_name = $self->get_name($element1);
       $server->{requests}->{opcode}->{$counter_name} = $data->{Data};
       return;
   }
 
   # for v3 rdtype counters
-  if ( $v3stats && $element_name1 eq 'counter' &&
-      $element_name2 eq 'counters' &&
-      (lc $element2->{Attributes}->{name}->{Value}) eq 'qtype' &&
-      $element_name3 eq 'server') {
+  if (   $element_name1 eq 'counter'
+      && $element_name2 eq 'counters'
+      && $element_name3 eq 'server'
+      && $self->get_typelc($element2) eq 'qtype') {
 
-      my $counter_name = $element1->{Attributes}->{name}->{Value};
+      my $counter_name = $self->get_name($element1);
       $server->{requests}->{rdtype}->{$counter_name} = $data->{Data};
+      return;
+  }
+
+  # for v3 rdtype counters
+  if (   $element_name1 eq 'counter'
+      && $element_name2 eq 'counters'
+      && $element_name3 eq 'server'
+      && $self->get_typelc($element2) eq 'zonestat') {
+
+      my $counter_name = $self->get_name($element1);
+      $server->{requests}->{zonestat}->{$counter_name} = $data->{Data};
+      return;
+  }
+
+  # for v3 sockstat counters
+  if (   $element_name1 eq 'counter'
+      && $element_name2 eq 'counters'
+      && $element_name3 eq 'server'
+      && $self->get_typelc($element2) eq 'sockstat') {
+
+      my $counter_name = $self->get_name($element1);
+      $server->{requests}->{sockstat}->{$counter_name} = $data->{Data};
       return;
   }
 
