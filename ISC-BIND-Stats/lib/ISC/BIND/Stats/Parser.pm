@@ -3,7 +3,7 @@ use common::sense;
 use base qw(XML::SAX::Base);
 use Data::Dumper;
 
-my $elements              = [];
+my $element_stack         = [];
 my $current_view          = q{};
 my $current_zone          = q{};
 my $cluster_counters      = {};
@@ -39,7 +39,7 @@ sub start_element {
 
   #print Dumper($self);
   # process element start event
-  push @$elements, lc $el->{Name};
+  push @$element_stack, $el;
 
 }
 
@@ -50,7 +50,7 @@ sub end_element {
     $valid_zone = 0;
   }
 
-  pop @$elements;
+  pop @$element_stack;
 }
 
 sub characters {
@@ -58,13 +58,13 @@ sub characters {
 
   # do this with log4perl?
   if($self->{bind9statsdebug}) {
-      print sprintf("in item[%u]: %s\n", scalar @{$elements}, join(' ', @{$elements}));
+      print sprintf("in item[%u]: %s\n", scalar @{$element_stack}, join(' ', map { lc $_->{Name} } @{$element_stack}));
   }
 
-  my $element_name1 = $elements->[-1];
-  my $element_name2 = $elements->[-2];
-  my $element_name3 = $elements->[-3];
-  my $element_name4 = $elements->[-4];
+  my $element_name1 = lc $element_stack->[-1]->{Name};
+  my $element_name2 = lc $element_stack->[-2]->{Name};
+  my $element_name3 = lc $element_stack->[-3]->{Name};
+  my $element_name4 = lc $element_stack->[-4]->{Name};
 
   if ( $element_name1 eq 'name' && $element_name2 eq 'view' ) {
     $current_view = $data->{Data};
