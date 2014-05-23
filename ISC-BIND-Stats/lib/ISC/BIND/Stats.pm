@@ -11,8 +11,9 @@ ISC::Stats::Parser - Parses the XML from BIND9 statistics channel
 
 =head1 DESCRIPTION
 
-This module parses the XML produced from BIND9 stats channel. It is meant for high speed parsing,
-with the purpose of statistical aggregation.
+This module parses the XML produced from BIND9 stats channel.
+It supports v2 and v3 stats formats.
+It is meant for high speed parsing, with the purpose of statistical aggregation.
 
 =head1 EXPORT
 
@@ -33,6 +34,7 @@ use IO::File;
 
 use XML::SAX::ParserFactory;
 use ISC::BIND::Stats::Parser;
+use Data::Dumper;
 
 =item new
 
@@ -56,11 +58,11 @@ sub new {
 =item parse
 
 Receives a .xml file (plain or compressed with bzip2), parses it using
-L<ISC::BIND::Stats::Parser> and returns a reference to a HASH with 
+L<ISC::BIND::Stats::Parser> and returns a reference to a HASH with
 the resulting values.
 
 
-arguments: 
+arguments:
 
 for file: { file => '/path/to/file.xml'}
 
@@ -68,17 +70,18 @@ for file: { file => '/path/to/file.xml'}
 
 sub parse {
   my ( $self, $args ) = @_;
+  print Dumper($args);
   if ( $args->{file} ) {
     my $file = $self->_open_file( $args->{file} );
     if ($file) {
       return $self->{parser}->parse_file($file);
     }
     else {
-      warn('Error opening file');
-      return;
+        warn("Error opening file: ".$args->{file});
+        return;
     }
   }
- 
+
   else {
     warn(q{Must pass either the file or url argument});
     return;

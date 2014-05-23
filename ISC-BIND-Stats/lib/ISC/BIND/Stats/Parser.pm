@@ -1,6 +1,7 @@
 package ISC::BIND::Stats::Parser;
 use common::sense;
 use base qw(XML::SAX::Base);
+use Data::Dumper;
 
 my $elements              = [];
 my $current_view          = q{};
@@ -18,10 +19,25 @@ my $sample_time;
 my $zone = {};
 
 my $server = {};
+my $isc_version = undef;
+my $stats_version = undef;
+my $counter_name  = undef;
 
 sub start_element {
   my ( $self, $el ) = @_;
 
+  if($el->{Name} eq 'isc') {
+      $isc_version   = $el->{Attributes}->{'{}version'}->{'Value'};
+  }
+  if($el->{Name} eq 'statistics') {
+      $stats_version = $el->{Attributes}->{'{}version'}->{'Value'};
+  }
+
+  if($el->{Name} eq 'counter') {
+      $counter_name = $el->{Attributes}->{'name'}->{'Value'};
+  }
+
+  #print Dumper($self);
   # process element start event
   push @$elements, lc $el->{Name};
 
@@ -40,60 +56,70 @@ sub end_element {
 sub characters {
   my ( $self, $data ) = @_;
 
-  if ( $elements->[-1] eq 'name' && $elements->[-2] eq 'view' ) {
+  # do this with log4perl?
+  if($self->{bind9statsdebug}) {
+      print sprintf("in item[%u]: %s\n", scalar @{$elements}, join(' ', @{$elements}));
+  }
+
+  my $element_name1 = $elements->[-1];
+  my $element_name2 = $elements->[-2];
+  my $element_name3 = $elements->[-3];
+  my $element_name4 = $elements->[-4];
+
+  if ( $element_name1 eq 'name' && $element_name2 eq 'view' ) {
     $current_view = $data->{Data};
     return;
   }
 
-  if ( $elements->[-1] eq 'name' && $elements->[-2] eq 'zone' ) {
+  if ( $element_name1 eq 'name' && $element_name2 eq 'zone' ) {
     $current_zone = $data->{Data};
     $current_zone =~ s|/IN$||;
     return;
   }
 
-  if (    $elements->[-1] eq 'serial'
+  if (    $element_name1 eq 'serial'
        && $data->{Data} > 0 )
   {
     $valid_zone = 1;
     $zone->{$current_zone}->{serial} = $data->{Data};
     return;
   }
-  if ( $elements->[-2] eq 'counters' ) {
+  if ( $element_name2 eq 'counters' ) {
     if ($valid_zone) {
-      $zone->{$current_zone}->{counters}->{ $elements->[-1] } = $data->{Data};
+      $zone->{$current_zone}->{counters}->{ $element_name1 } = $data->{Data};
       return;
     }
   }
 
-  if ( $elements->[-2] eq 'server' ) {
-    if ( $elements->[-1] eq 'boot-time' ) {
+  if ( $element_name2 eq 'server' ) {
+    if ( $element_name1 eq 'boot-time' ) {
       $boot_time = $data->{Data};
       return;
     }
-    if ( $elements->[-1] eq 'current-time' ) {
+    if ( $element_name1 eq 'current-time' ) {
       $sample_time = $data->{Data};
       return;
     }
   }
 
-  if (    $elements->[-4] eq 'server'
-       && $elements->[-3] eq 'queries-in' )
+  if (    $element_name4 eq 'server'
+       && $element_name3 eq 'queries-in' )
   {
-    if ( $elements->[-2] eq 'rdtype' ) {
-      if ( $elements->[-1] eq 'name' ) {
+    if ( $element_name2 eq 'rdtype' ) {
+      if ( $element_name1 eq 'name' ) {
         $current_query_counter = $data->{Data};
         return;
       }
-      if ( $elements->[-1] eq 'counter' ) {
+      if ( $element_name1 eq 'counter' ) {
         $server->{requests}->{rdtype}->{$current_query_counter} = $data->{Data};
         return;
       }
     }
   }
 
-  if ( $elements->[-3] eq 'requests' ) {
-    if ( $elements->[-2] eq 'opcode' ) {
-      if ( $elements->[-1] eq 'name' ) {
+  if ( $element_name3 eq 'requests' ) {
+    if ( $element_name2 eq 'opcode' ) {
+      if ( $element_name1 eq 'name' ) {
         $current_opcode = $data->{Data};
         return;
       }
@@ -104,25 +130,25 @@ sub characters {
     }
   }
 
-  if ( $elements->[-3] eq 'server' ) {
-    if (    $elements->[-1] eq 'name'
-         && $elements->[-2] eq 'nsstat' )
+  if ( $element_name3 eq 'server' ) {
+    if (    $element_name1 eq 'name'
+         && $element_name2 eq 'nsstat' )
     {
       $current_nsstat = $data->{Data};
       return;
     }
-    if (    $elements->[-1] eq 'counter'
-         && $elements->[-2] eq 'nsstat' )
+    if (    $element_name1 eq 'counter'
+         && $element_name2 eq 'nsstat' )
     {
       $server->{requests}->{nsstat}->{$current_nsstat} = $data->{Data};
       return;
     }
 
-    if ( $elements->[-1] eq 'name' && $elements->[-2] eq 'zonestat' ) {
+    if ( $element_name1 eq 'name' && $element_name2 eq 'zonestat' ) {
       $current_zonestat = $data->{Data};
       return;
     }
-    if ( $elements->[-1] eq 'counter' && $elements->[-2] eq 'zonestat' ) {
+    if ( $element_name1 eq 'counter' && $element_name2 eq 'zonestat' ) {
       $server->{requests}->{zonestat}->{$current_zonestat} = $data->{Data};
       return;
     }
@@ -132,6 +158,8 @@ sub characters {
 
 sub end_document {
   return {
+      isc_version   => $isc_version,
+      stats_version => $stats_version,
            zone            => $zone,
            sample_time     => $sample_time,
            boot_time       => $boot_time,
