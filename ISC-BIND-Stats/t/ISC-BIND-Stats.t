@@ -13,10 +13,11 @@ use Test::Deep;
 use Data::Dumper;
 
 # get reference results
+use lib 't';
 use sample;
 
+BEGIN { plan tests => 11 }
 BEGIN { use_ok('ISC::BIND::Stats') }
-
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
@@ -66,7 +67,7 @@ ok(!$invfile,q{Invalid file returned undef});
 
 note('Parsing an XML file (v3)');
 
-my $v3data = $parser->parse( { file => 't/XML/v3sample.xml' } );
+my $v3data = $parser->parse( { file => 't/XML/v3sample.xml.bz2' } );
 ok(ref $v3data eq 'HASH','Data returned from parser (xml)');
 
 done_testing();

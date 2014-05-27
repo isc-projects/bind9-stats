@@ -52,6 +52,6 @@
          "http://opensource.org/licenses/bsd-license.php"
       ]
    },
-   "version" : "1.052000",
+   "version" : "2.001",
    "x_module_name" : "ISC::BIND::Stats"
 }

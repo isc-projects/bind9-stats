@@ -10,6 +10,8 @@ $VERSION     = 1.00;
 @EXPORT_OK   = qw($sample1);
 
 our $sample1 = {
+    'isc_version'   => "1.0",
+    'stats_version' => "2.2",
           'server_counters' => {
                                  'requests' => {
                                                  'zonestat' => {
