@@ -70,7 +70,7 @@ for file: { file => '/path/to/file.xml'}
 
 sub parse {
   my ( $self, $args ) = @_;
-  print Dumper($args);
+  #print Dumper($args);
   if ( $args->{file} ) {
     my $file = $self->_open_file( $args->{file} );
     if ($file) {

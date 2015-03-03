@@ -1,3 +1,9 @@
+libisc-bind-stats-perl (3.01-1) unstable; urgency=low
+
+  * turn off extra debugging
+
+ -- mcr <mcr@isc.org>  Tue, 03 Mar 2015 10:19:28 -0500
+
 libisc-bind-stats-perl (3.00-1) unstable; urgency=low
 
   * this release supports parsing bind 9.10, v3 XML stats files as well as v2.
