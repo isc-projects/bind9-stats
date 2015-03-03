@@ -14,31 +14,23 @@ my $current_class         = q{};
 my $current_nsstat        = q{};
 my $current_zonestat      = q{};
 
-my $boot_time;
-my $sample_time;
-
-my $zone = {};
-
-my $server = {};
-my $isc_version = undef;
-my $stats_version = undef;
 my $counter_name  = undef;
-my $v2stats = undef;
-my $v3stats = undef;
 
 sub start_element {
   my ( $self, $el ) = @_;
 
   if($el->{Name} eq 'isc') {
-      $isc_version   = $el->{Attributes}->{'{}version'}->{'Value'};
+      $self->{isc_version}   = $el->{Attributes}->{'{}version'}->{'Value'};
   }
   if($el->{Name} eq 'statistics') {
-      $stats_version = $el->{Attributes}->{'{}version'}->{'Value'};
-      if($stats_version =~ /2\.\d+/) {
-          $v2stats = 1;
+      $self->{stats_version} = $el->{Attributes}->{'{}version'}->{'Value'};
+      if($self->{stats_version} =~ /2\.\d+/) {
+	  $self->optprint("founding v2 stats file");
+          $self->{v2stats} = 1;
       }
-      if($stats_version =~ /3\.\d+/) {
-          $v3stats = 1;
+      if($self->{stats_version} =~ /3\.\d+/) {
+	  $self->optprint("founding ".${self}->{stats_version}." stats file");
+          $self->{v3stats} = 1;
       }
   }
 
@@ -112,21 +104,22 @@ sub characters {
   # this is the same between v2/v3
   if ( $element_name2 eq 'server' ) {
     if ( $element_name1 eq 'boot-time' ) {
-      $boot_time = $data->{Data};
+      $self->{boot_time} = $data->{Data};
       return;
     }
     if ( $element_name1 eq 'current-time' ) {
-      $sample_time = $data->{Data};
+      $self->{sample_time} = $data->{Data};
       return;
     }
   }
 
-  if($v2stats) {
+  if($self->{v2stats}) {
       return $self->characters_v2($data);
-  }
-
-  if($v3stats) {
+  } elsif($self->{v3stats}) {
       return $self->characters_v3($data);
+  } else {
+      warn("Invalid stats version");
+      return;
   }
 
 }
@@ -146,33 +139,33 @@ sub characters_v2 {
   my $element_name4 = lc $element4->{Name};
   my $element_name5 = lc $element5->{Name};
 
-  if ( $v2stats && $element_name1 eq 'name' && $element_name2 eq 'view' ) {
+  if ( $element_name1 eq 'name' && $element_name2 eq 'view' ) {
     $current_view = $data->{Data};
     return;
   }
 
-  if ( $v2stats && $element_name1 eq 'name' && $element_name2 eq 'zone' ) {
+  if ( $element_name1 eq 'name' && $element_name2 eq 'zone' ) {
     $current_zone = $data->{Data};
     $current_zone =~ s|/IN$||;
     return;
   }
 
-  if ( $v2stats &&  $element_name1 eq 'serial'
+  if ( $element_name1 eq 'serial'
        && $data->{Data} > 0 )
   {
     $valid_zone = 1;
-    $zone->{$current_zone}->{serial} = $data->{Data};
+    $self->{zone}->{$current_zone}->{serial} = $data->{Data};
     return;
   }
-  if ( $v2stats && $element_name2 eq 'counters' ) {
-    if ($valid_zone) {
-      $zone->{$current_zone}->{counters}->{ $element_name1 } = $data->{Data};
+  if ( $element_name2 eq 'counters' ) {
+      if ($valid_zone) {
+      $self->{zone}->{$current_zone}->{counters}->{ $element_name1 } = $data->{Data};
       return;
     }
   }
 
   # for v2 rdtype
-  if ( $v2stats && $element_name4 eq 'server'
+  if ( $element_name4 eq 'server'
        && $element_name3 eq 'queries-in' )
   {
     if ( $element_name2 eq 'rdtype' ) {
@@ -181,26 +174,26 @@ sub characters_v2 {
         return;
       }
       if ( $element_name1 eq 'counter' ) {
-        $server->{requests}->{rdtype}->{$current_query_counter} = $data->{Data};
+        $self->{server}->{requests}->{rdtype}->{$current_query_counter} = $data->{Data};
         return;
       }
     }
   }
 
   # for v2 opcode counters
-  if ( $v2stats && $element_name3 eq 'requests' ) {
+  if ( $element_name3 eq 'requests' ) {
     if ( $element_name2 eq 'opcode' ) {
       if ( $element_name1 eq 'name' ) {
         $current_opcode = $data->{Data};
         return;
       }
       else {
-        $server->{requests}->{opcode}->{$current_opcode} = $data->{Data};
+        $self->{server}->{requests}->{opcode}->{$current_opcode} = $data->{Data};
         return;
       }
     }
   }
-  if ( $v2stats && $element_name3 eq 'server' ) {
+  if ( $element_name3 eq 'server' ) {
     if (    $element_name1 eq 'name'
          && $element_name2 eq 'nsstat' )
     {
@@ -210,7 +203,7 @@ sub characters_v2 {
     if (    $element_name1 eq 'counter'
          && $element_name2 eq 'nsstat' )
     {
-      $server->{requests}->{nsstat}->{$current_nsstat} = $data->{Data};
+      $self->{server}->{requests}->{nsstat}->{$current_nsstat} = $data->{Data};
       return;
     }
 
@@ -219,7 +212,7 @@ sub characters_v2 {
       return;
     }
     if ( $element_name1 eq 'counter' && $element_name2 eq 'zonestat' ) {
-      $server->{requests}->{zonestat}->{$current_zonestat} = $data->{Data};
+      $self->{server}->{requests}->{zonestat}->{$current_zonestat} = $data->{Data};
       return;
     }
   }
@@ -241,7 +234,7 @@ sub characters_v3 {
   my $element_name5 = lc $element5->{Name};
 
   # process serial number
-  if ( $v3stats && $element_name1 eq 'serial'
+  if ($element_name1 eq 'serial'
       && $element_name2 eq 'zone'
       && $element_name3 eq 'zones'
       && $element_name4 eq 'view') {
@@ -249,7 +242,7 @@ sub characters_v3 {
       $current_view = $self->get_name($element4);
       $current_zone = $self->get_name($element2);
       $current_class= $self->get_attribute($element2, "rdataclass");
-      $zone->{$current_zone}->{serial} = $data->{Data};
+      $self->{zone}->{$current_zone}->{serial} = $data->{Data};
 
       # $self->optprint("adding serial data for zone: %s", $current_zone);
       return;
@@ -264,8 +257,8 @@ sub characters_v3 {
       $current_view = $self->get_name($element5);
       $current_zone = $self->get_name($element3);
       $current_class= $self->get_attribute($element3, "rdataclass");
-      $counter_name = $self->get_name($element1);
-      $zone->{$current_zone}->{counters}->{$counter_name} = $data->{Data};
+      $counter_name = lc $self->get_name($element1);
+      $self->{zone}->{$current_zone}->{counters}->{$counter_name} = $data->{Data};
       return;
   }
 
@@ -276,7 +269,7 @@ sub characters_v3 {
       && $element_name3 eq 'server'
       && $self->get_typelc($element2) eq 'opcode') {
       my $counter_name = $self->get_name($element1);
-      $server->{requests}->{opcode}->{$counter_name} = $data->{Data};
+      $self->{server}->{requests}->{opcode}->{$counter_name} = $data->{Data};
       return;
   }
 
@@ -287,7 +280,7 @@ sub characters_v3 {
       && $self->get_typelc($element2) eq 'qtype') {
 
       my $counter_name = $self->get_name($element1);
-      $server->{requests}->{rdtype}->{$counter_name} = $data->{Data};
+      $self->{server}->{requests}->{rdtype}->{$counter_name} = $data->{Data};
       return;
   }
 
@@ -298,7 +291,7 @@ sub characters_v3 {
       && $self->get_typelc($element2) eq 'zonestat') {
 
       my $counter_name = $self->get_name($element1);
-      $server->{requests}->{zonestat}->{$counter_name} = $data->{Data};
+      $self->{server}->{requests}->{zonestat}->{$counter_name} = $data->{Data};
       return;
   }
 
@@ -309,7 +302,7 @@ sub characters_v3 {
       && $self->get_typelc($element2) eq 'sockstat') {
 
       my $counter_name = $self->get_name($element1);
-      $server->{requests}->{sockstat}->{$counter_name} = $data->{Data};
+      $self->{server}->{requests}->{sockstat}->{$counter_name} = $data->{Data};
       return;
   }
 
@@ -318,13 +311,14 @@ sub characters_v3 {
 }
 
 sub end_document {
+  my ( $self ) = @_;
   return {
-      isc_version   => $isc_version,
-      stats_version => $stats_version,
-           zone            => $zone,
-           sample_time     => $sample_time,
-           boot_time       => $boot_time,
-           server_counters => $server
+      isc_version   => $self->{isc_version},
+      stats_version => $self->{stats_version},
+      zone            => $self->{zone},
+      sample_time     => $self->{sample_time},
+      boot_time       => $self->{boot_time},
+      server_counters => $self->{server}
   };
 
 }

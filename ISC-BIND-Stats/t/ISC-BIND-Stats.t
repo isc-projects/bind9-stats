@@ -8,15 +8,21 @@
 use strict;
 use warnings;
 
+use Cwd; 
 use Test::More;
 use Test::Deep;
 use Data::Dumper;
 
 # get reference results
 use lib 't';
+use lib 'lib';
 use sample;
 
-BEGIN { plan tests => 11 }
+local $SIG{__WARN__} = sub {
+     # here we get the warning, and just do not print it.
+};
+
+BEGIN { plan tests => 12 }
 BEGIN { use_ok('ISC::BIND::Stats') }
 #########################
 
@@ -67,7 +73,12 @@ ok(!$invfile,q{Invalid file returned undef});
 
 note('Parsing an XML file (v3)');
 
-my $v3data = $parser->parse( { file => 't/XML/v3sample.xml.bz2' } );
+my $parse2 = ISC::BIND::Stats->new;
+#$parse2->{parser}->{Handler}->{bind9statsdebug} = 1;
+
+my $v3data = $parse2->parse( { file => 't/XML/v3sample.xml.bz2' } );
 ok(ref $v3data eq 'HASH','Data returned from parser (xml)');
+diag(Dumper($v3data->{zone}->{'46.139.192.in-addr.arpa'}->{counters}->{qrysuccess}));
+ok($v3data->{zone}->{'46.139.192.in-addr.arpa'}->{counters}->{qrysuccess} eq '811');
 
 done_testing();

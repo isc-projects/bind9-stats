@@ -72,7 +72,8 @@ sub parse {
   my ( $self, $args ) = @_;
   #print Dumper($args);
   if ( $args->{file} ) {
-    my $file = $self->_open_file( $args->{file} );
+      my $file = $self->_open_file( $args->{file} );
+      $self->{parser}->{zone} = {};
     if ($file) {
       return $self->{parser}->parse_file($file);
     }
