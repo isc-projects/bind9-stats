@@ -1,0 +1,194 @@
+#!/usr/bin/env perl
+
+=head1 NAME
+
+monthly_summary - emit CSV format summary of cumulative counters from XML file
+
+=head1 SYNOPSIS
+
+  monthly_summary -s server_name *xml
+
+  Other Options
+
+  -s|--server   host name of the server
+
+=head1 DESCRIPTION
+
+  This program reads BIND 9 XML (version 2 and 3), and outputs a CSV format summary.
+
+=head1 EXPORT
+
+  None by default.
+
+=cut
+
+=head1 DESCRIPTION
+
+=over
+
+=cut
+
+use common::sense;
+use Time::HiRes qw(gettimeofday tv_interval);
+use HTTP::Date;
+
+use DateTime;
+use Data::Dumper;
+use Getopt::Long;
+use POSIX qw(strftime);
+
+use ISC::BIND::Stats;
+
+use Pod::Usage;
+
+# This is the main clock, counting the total elapsed time from as
+# early as we can.
+
+my $save_t0 = [gettimeofday];
+
+=item $config
+
+The main configuration for the program is located in the C<$config>
+hashref. It provides reasonable defaults, with the ability to be
+modified by using the command line options.
+
+=cut
+
+my %timing = ();                # Used to keep all timings together
+my $zone_counter = 0;
+my @processed;
+my $connection;
+my $cacheconn;
+my $database;
+my $cachedb;
+my $traffic;
+my $datasets;
+my $server_stats;
+my $customers;
+my $csmaps;
+my $serials;
+my $zt5min;
+my $c5min;
+our $now_str;
+our $file_str;
+
+my $config = {
+    server_name => q{},
+    parse_debug => 0,
+};
+my $options = GetOptions(
+                          'server|s=s'   => \$config->{server_name},
+                          'parsedebug'   => \$config->{parse_debug},
+    );
+
+if ( !$config->{server_name} ) {
+  &show_usage(q{Must supply --server|-s server_name});
+}
+
+$0 = "monthly_summary: starting up";
+
+# Make sure the indexes exists
+
+#
+# List of items we're interested in
+#
+my @WANTED = (
+               'qrysuccess', 'qryreferral', 'qrynxrrset', 'qryservfail',
+               'qryformerr', 'qrynxdomain', 'qryudp', 'qrytcp'
+);
+
+our $counter     = 0;
+my $parser      = ISC::BIND::Stats->new;
+my $insert_time = time() * 1000;
+
+foreach my $file (@ARGV) {
+  $counter++;
+
+  @processed = ();
+
+  $parser->{parser}->{Handler}->{bind9statsdebug} = $config->{parse_debug};
+
+  my $result        = $parser->parse( { file => $file } );
+
+  process_file($file, $result);
+}
+
+sub process_file {
+    my $file   = shift;
+    my $result = shift;
+
+    my $server_name = $config->{server_name};
+
+    my $boot_time   = str2time($result->{boot_time} ) * 1000;
+    my $sample_time = str2time($result->{sample_time} ) * 1000;
+    my $num = 1;
+
+    print "#server,row-id,boot-time,sample-time,zone,class,success,nxdomain,qryudp,qrytcp\n";
+    my $zone_total = scalar(keys %{$result->{zone}});
+    while ( my ( $zone, $data ) = each %{ $result->{zone} } ) {
+
+        #print "ZONE: $zone".Dumper($data)."\n";
+        my $counters = $data->{counters};
+        print join(',',$server_name,
+                   $num, $boot_time, $sample_time, $zone, "IN",
+                   $counters->{qrysuccess},
+                   $counters->{qrynxdomain},
+                   $counters->{qryudp},
+                   $counters->{qrytcp})."\n";
+        $num++;
+    }
+
+}
+
+=item show_usage
+
+Show the usage and exits
+
+=cut
+
+sub show_usage {
+  my ($message) = @_;
+  pod2usage(
+             {
+               -message => $message,
+               -exitval => 1,
+               -verbose => 1
+             }
+  );
+
+}
+
+__END__
+
+=back
+
+=head1 SEE ALSO
+
+  http://www.isc.org
+
+=head1 AUTHOR
+
+Internet Systems Consortium Inc.
+
+=head1 LICENSE
+
+BSD
+
+=head1 COPYRIGHT
+
+Copyright (C) 2004-2012  Internet Systems Consortium, Inc. ("ISC")
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+=cut
+
